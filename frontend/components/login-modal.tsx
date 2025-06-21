@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useClientOnly } from '@/hooks/use-hydration-safe';
 import { GoogleAuthButton } from '@/components/auth/google-auth';
+import { auth } from '@/lib/auth';
+import { useAuth } from './auth/auth-context';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -10,37 +12,78 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const isClient = useClientOnly();
+  const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!email.trim() || !password.trim()) {
+      alert("Please fill in all fields");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        alert(data.error || "Login failed. Please try again.");
+        return;
+      }
+      
+      // Store user data and tokens
+      if (data.user && data.tokens) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("authToken", data.tokens.access);
+        localStorage.setItem("refreshToken", data.tokens.refresh);
+      }
+      
+      // Redirect to dashboard
+      window.location.href = "/dashboard";
+    } catch (err) {
+      console.error("Login error:", err);
+      alert("Login failed. Please try again.");
+    }
+  };
+  
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error || 'Login failed. Please try again.');
-        setLoading(false);
-        return;
-      }
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('authToken', data.token);
+      const { user } = await auth.register({ name, email, password });
+      login(user);
       onClose();
       window.location.href = '/dashboard';
     } catch (err) {
-      setError('Login failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    if (isRegistering) {
+      handleRegister(e);
+    } else {
+      handleLogin(e);
     }
   };
 
@@ -53,9 +96,26 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
         <div className="mt-3 text-center">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">Login</h3>
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+            {isRegistering ? 'Create an account' : 'Login'}
+          </h3>
           <div className="px-7 py-3">
             <form onSubmit={handleSubmit} suppressHydrationWarning>
+              {isRegistering && (
+                <div className="mb-4">
+                  <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    suppressHydrationWarning
+                  />
+                </div>
+              )}
               <div className="mb-4">
                 <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
                   Email
@@ -89,7 +149,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                 suppressHydrationWarning
                 disabled={loading}
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {loading ? 'Processing...' : (isRegistering ? 'Register' : 'Login')}
               </button>
 
               <div className="flex items-center my-4">
@@ -108,7 +168,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               />
 
               <p className="text-center text-gray-500 text-xs mt-2">
-                Don't have an account? <a className="text-blue-500" href="/register">Register</a>
+                {isRegistering ? 'Already have an account?' : "Don't have an account?"}
+                <button
+                  type="button"
+                  className="text-blue-500 ml-1"
+                  onClick={() => {
+                    setIsRegistering(!isRegistering);
+                    setError('');
+                  }}
+                >
+                  {isRegistering ? 'Login' : 'Register'}
+                </button>
               </p>
             </form>
           </div>

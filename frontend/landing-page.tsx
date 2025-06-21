@@ -15,6 +15,7 @@ export default function LandingPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
+    email: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
@@ -30,13 +31,13 @@ export default function LandingPage() {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.agreeToTerms) {
       alert("Please accept the Terms & Conditions to continue")
       return
     }
-    if (!formData.name.trim() || !formData.password.trim() || !formData.confirmPassword.trim()) {
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim() || !formData.confirmPassword.trim()) {
       alert("Please fill in all fields")
       return
     }
@@ -44,8 +45,49 @@ export default function LandingPage() {
       alert("Passwords do not match")
       return
     }
-    // Proceed to dashboard
-    window.location.href = "/dashboard"
+    if (formData.password.length < 6) {
+      alert("Password must be at least 6 characters long")
+      return
+    }
+
+    try {
+      // Split name into first_name and last_name
+      const nameParts = formData.name.trim().split(' ', 2);
+      const first_name = nameParts[0];
+      const last_name = nameParts[1] || '';
+
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: first_name,
+          last_name: last_name,
+          email: formData.email.trim(),
+          password: formData.password,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        alert(data.error || data.detail || "Registration failed. Please try again.");
+        return;
+      }
+      
+      // Store user data and tokens
+      if (data.member && data.tokens) {
+        localStorage.setItem("user", JSON.stringify(data.member));
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("authToken", data.tokens.access);
+        localStorage.setItem("refreshToken", data.tokens.refresh);
+      }
+      
+      // Redirect to dashboard
+      window.location.href = "/dashboard"
+    } catch (err) {
+      console.error("Registration error:", err);
+      alert("Registration failed. Please try again.");
+    }
   }
 
   const handleGoogleSignup = async () => {
@@ -120,9 +162,20 @@ export default function LandingPage() {
             <div className="relative">
               <Input
                 type="text"
-                placeholder="Enter Your Name"
+                placeholder="Enter Your Full Name"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
+                className="w-full px-4 py-3 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
+                suppressHydrationWarning
+              />
+            </div>
+
+            <div className="relative">
+              <Input
+                type="email"
+                placeholder="Enter Your Email"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 className="w-full px-4 py-3 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
               />

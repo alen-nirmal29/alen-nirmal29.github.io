@@ -1,4 +1,5 @@
 from django.db import models
+from users.models import Member
 
 class PomodoroSession(models.Model):
     start_time = models.DateTimeField()
@@ -9,6 +10,7 @@ class PomodoroSession(models.Model):
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='pomodoro_sessions')
 
     def __str__(self):
         return f"Pomodoro: {self.start_time} - {self.end_time} ({self.duration} min, {self.cycles} cycles)" 

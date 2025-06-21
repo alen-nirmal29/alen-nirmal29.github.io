@@ -55,29 +55,50 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      setLoading(false);
+      return;
+    }
 
     try {
+      // Split name into first_name and last_name
+      const nameParts = formData.name.trim().split(' ', 2);
+      const first_name = nameParts[0];
+      const last_name = nameParts[1] || '';
+
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
+          first_name: first_name,
+          last_name: last_name,
+          email: formData.email.trim(),
           password: formData.password,
         }),
       });
+      
       const data = await response.json();
+      
       if (!response.ok) {
-        setError(data.error || "Registration failed. Please try again.");
+        setError(data.error || data.detail || "Registration failed. Please try again.");
         setLoading(false);
         return;
       }
+      
       setSuccess(true);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("authToken", data.token);
+      
+      // Store user data and tokens
+      if (data.member && data.tokens) {
+        localStorage.setItem("user", JSON.stringify(data.member));
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("authToken", data.tokens.access);
+        localStorage.setItem("refreshToken", data.tokens.refresh);
+      }
+      
       setTimeout(() => router.push("/dashboard"), 1200);
     } catch (err) {
+      console.error("Registration error:", err);
       setError("Registration failed. Please try again.");
     } finally {
       setLoading(false);
@@ -111,10 +132,11 @@ export default function RegisterPage() {
           <div>
             <Input
               type="text"
-              placeholder="Enter Your Name"
+              placeholder="Enter Your Full Name"
               value={formData.name}
               onChange={(e) => handleChange("name", e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
             />
           </div>
 
@@ -125,6 +147,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={(e) => handleChange("email", e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
             />
           </div>
 
@@ -135,6 +158,8 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={(e) => handleChange("password", e.target.value)}
               className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              minLength={6}
             />
             <button
               type="button"
@@ -152,6 +177,8 @@ export default function RegisterPage() {
               value={formData.confirmPassword}
               onChange={(e) => handleChange("confirmPassword", e.target.value)}
               className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              minLength={6}
             />
             <button
               type="button"
@@ -162,7 +189,7 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="terms"
               checked={formData.agreeToTerms}

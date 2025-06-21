@@ -33,10 +33,11 @@ import { ProjectModal as EnhancedProjectModal } from "./enhanced-project-modal"
 import { Project } from "@/types/project";
 import { Textarea } from "@/components/ui/textarea"
 import { fetchProjects, createProject, updateProject } from "@/utils/projects-api"
+import { apiRequest } from "@/lib/auth"
 
 // Add this function for backend delete
 async function deleteProjectFromBackend(projectId: number) {
-  const res = await fetch(
+  const res = await apiRequest(
     `${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/${projectId}/`,
     { method: "DELETE" }
   );
@@ -45,13 +46,30 @@ async function deleteProjectFromBackend(projectId: number) {
 
 // Add this function for backend create
 async function createProjectInBackend(projectData: any) {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(projectData),
-  })
-  if (!response.ok) throw new Error("Failed to create project in backend")
-  return await response.json()
+  try {
+    // Create project with proper field names
+    const projectPayload = {
+      name: projectData.name,
+      status: projectData.status || "Planning",
+      progress: projectData.progress || 0,
+      client_name: projectData.client || "",
+    };
+
+    const response = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`, {
+      method: "POST",
+      body: JSON.stringify(projectPayload),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || "Failed to create project in backend");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Project creation error:", error);
+    throw error;
+  }
 }
 
 export function ProjectsPage() {
@@ -167,7 +185,8 @@ const [filters, setFilters] = useState<Filters>({
       const backendProject = await createProjectInBackend({
         name: newProjectName,
         client: newProjectClient,
-        // Add other fields as needed for your backend serializer
+        status: "Planning",
+        progress: 0,
       })
       setNewProjectName("")
       setNewProjectClient("")
@@ -323,11 +342,13 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
         await createProjectInBackend({
           name: projectData.name,
           client: projectData.client,
-          // Add other fields as needed
+          status: projectData.status || "Planning",
+          progress: projectData.progress || 0,
         })
         setLoading(true) // trigger refetch from backend
       } catch (err) {
         // Optionally show error to user
+        setError(err instanceof Error ? err.message : "Failed to create project");
         setLoading(false)
       }
     }

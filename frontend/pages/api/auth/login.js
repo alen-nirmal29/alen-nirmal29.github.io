@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
 
     // Forward the request to Django backend
-    const response = await fetch(`${DJANGO_API_URL}/api/auth/login/`, {
+    const response = await fetch(`${DJANGO_API_URL}/api/users/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

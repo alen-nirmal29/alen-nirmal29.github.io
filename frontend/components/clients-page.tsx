@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ClientModal } from "./client-modal"
+import { apiRequest } from "@/lib/auth"
 
 interface Client {
   id?: number | string;
@@ -31,7 +32,7 @@ export function ClientsPage() {
   useEffect(() => {
     async function fetchClients() {
       try {
-        const res = await fetch(`${API_BASE}/projects/clients/`);
+        const res = await apiRequest(`${API_BASE}/projects/clients/`);
         if (res.ok) {
           const data = await res.json();
           setClients(data);
@@ -79,7 +80,7 @@ export function ClientsPage() {
 
   const handleDeleteClient = async (clientId: number) => {
     try {
-      const res = await fetch(`${API_BASE}/projects/clients/${clientId}/`, {
+      const res = await apiRequest(`${API_BASE}/projects/clients/${clientId}/`, {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -108,7 +109,7 @@ export function ClientsPage() {
     // If editing
     if (client.id) {
       try {
-        const res = await fetch(`${API_BASE}/projects/clients/${client.id}/`, {
+        const res = await apiRequest(`${API_BASE}/projects/clients/${client.id}/`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: client.name }),
@@ -126,7 +127,7 @@ export function ClientsPage() {
     } else {
       // Add new client
       try {
-        const res = await fetch(`${API_BASE}/projects/clients/`, {
+        const res = await apiRequest(`${API_BASE}/projects/clients/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: client.name }),

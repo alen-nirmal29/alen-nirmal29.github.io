@@ -1,3 +1,5 @@
+import { apiRequest } from '../lib/auth';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api";
 const TIME_ENTRIES_ENDPOINT = `${API_BASE}/projects/time-entries/`;
 
@@ -15,16 +17,15 @@ export interface TimeEntry {
 }
 
 export async function fetchTimeEntries(): Promise<TimeEntry[]> {
-  const res = await fetch(TIME_ENTRIES_ENDPOINT);
+  const res = await apiRequest(TIME_ENTRIES_ENDPOINT);
   if (!res.ok) throw new Error("Failed to fetch time entries");
   return res.json();
 }
 
 export async function createTimeEntry(entry: Omit<TimeEntry, "id" | "created_at" | "updated_at">): Promise<TimeEntry> {
   try {
-    const res = await fetch(TIME_ENTRIES_ENDPOINT, {
+    const res = await apiRequest(TIME_ENTRIES_ENDPOINT, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     });
     if (!res.ok) {
@@ -42,9 +43,8 @@ export async function createTimeEntry(entry: Omit<TimeEntry, "id" | "created_at"
 }
 
 export async function updateTimeEntry(id: number, entry: Partial<Omit<TimeEntry, "id" | "created_at" | "updated_at">>): Promise<TimeEntry> {
-  const res = await fetch(`${API_BASE}/projects/time-entries/${id}/`, {
+  const res = await apiRequest(`${API_BASE}/projects/time-entries/${id}/`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(entry),
   });
   if (!res.ok) throw new Error("Failed to update time entry");
@@ -52,7 +52,8 @@ export async function updateTimeEntry(id: number, entry: Partial<Omit<TimeEntry,
 }
 
 export async function deleteTimeEntry(id: number): Promise<void> {
-  const res = await fetch(`${API_BASE}/projects/time-entries/${id}/`, {
-    method: "DELETE" });
+  const res = await apiRequest(`${API_BASE}/projects/time-entries/${id}/`, {
+    method: "DELETE"
+  });
   if (!res.ok) throw new Error("Failed to delete time entry");
 }

@@ -9,4 +9,4 @@ export default function LoginPage() {
   return (
     <LoginModal isOpen={isOpen} onClose={() => setIsOpen(false)} />
   );
-}
+} 

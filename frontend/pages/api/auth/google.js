@@ -70,10 +70,10 @@ export default async function handler(req, res) {
 
     const backendData = await backendResponse.json();
 
-    // Return the user data and token from backend
+    // Return the user data and tokens from backend
     res.status(200).json({
       user: backendData.user,
-      token: backendData.token,
+      tokens: backendData.tokens,
       message: mode === 'signup' ? 'User registered successfully' : 'User logged in successfully'
     });
 

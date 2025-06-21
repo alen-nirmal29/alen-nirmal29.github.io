@@ -4,22 +4,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, email, password } = req.body;
+    const { first_name, last_name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
+    if (!first_name || !email || !password) {
+      return res.status(400).json({ error: 'First name, email, and password are required' });
     }
 
     // Set the Django API URL with fallback
     const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
 
     // Forward the request to Django backend
-    const response = await fetch(`${DJANGO_API_URL}/api/auth/register/`, {
+    const response = await fetch(`${DJANGO_API_URL}/api/users/members/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ 
+        first_name, 
+        last_name: last_name || '', 
+        email, 
+        password 
+      })
     });
 
     const data = await response.json();

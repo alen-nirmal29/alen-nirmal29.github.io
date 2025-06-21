@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { apiRequest } from "@/lib/auth"
 
 interface Client {
   id?: number | string;
@@ -34,37 +35,46 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
   })
 
   const [clientNameSuggestions, setClientNameSuggestions] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSave = async () => {
     if (!formData.name) return
+    setLoading(true)
+    setError("")
+    
     try {
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
-      const res = await fetch(`${API_BASE}/projects/clients/`, {
+      const res = await apiRequest(`${API_BASE}/projects/clients/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: formData.name }),
       });
+      
       if (res.ok) {
         const savedClient = await res.json();
         onSave(savedClient);
         onClose();
       } else {
-        // handle error, e.g. show toast
         const errorBody = await res.text();
         let userMessage = "Failed to save client.";
         try {
           const errorJson = JSON.parse(errorBody);
-          if (errorJson.name && errorJson.name[0].includes("already exists")) {
+          if (errorJson.name && errorJson.name[0] && errorJson.name[0].includes("already exists")) {
             userMessage = "A client with this name already exists.";
+          } else if (errorJson.detail) {
+            userMessage = errorJson.detail;
           }
         } catch (e) {
           // Not JSON, keep default message
         }
-        alert(userMessage);
+        setError(userMessage);
         console.error('Failed to save client', res.status, errorBody);
       }
     } catch (err) {
       console.error('Error saving client:', err);
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -77,12 +87,13 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
+    
     if (client) {
       onSave({ ...formData, id: client.id })
     } else {
       handleSave()
     }
-    onClose()
   }
 
   const handleCancel = () => {
@@ -111,6 +122,12 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
+          
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Name
@@ -122,6 +139,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
               onChange={(e) => handleInputChange("name", e.target.value)}
               className="w-full"
               required
+              disabled={loading}
               list="client-name-suggestions"
             />
             <datalist id="client-name-suggestions">
@@ -142,6 +160,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
               className="w-full"
+              disabled={loading}
             />
           </div>
 
@@ -155,6 +174,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
               value={formData.address}
               onChange={(e) => handleInputChange("address", e.target.value)}
               className="w-full min-h-[80px] resize-none"
+              disabled={loading}
             />
           </div>
 
@@ -168,6 +188,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
               value={formData.note}
               onChange={(e) => handleInputChange("note", e.target.value)}
               className="w-full min-h-[80px] resize-none"
+              disabled={loading}
             />
           </div>
 
@@ -175,7 +196,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
             <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-1">
               Currency
             </label>
-            <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)}>
+            <Select value={formData.currency} onValueChange={(value) => handleInputChange("currency", value)} disabled={loading}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -191,11 +212,11 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4">
-            <Button type="button" variant="ghost" onClick={handleCancel} className="text-gray-600 hover:text-gray-800">
+            <Button type="button" variant="ghost" onClick={handleCancel} className="text-gray-600 hover:text-gray-800" disabled={loading}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white px-6">
-              SAVE
+            <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white px-6" disabled={loading}>
+              {loading ? "Saving..." : "SAVE"}
             </Button>
           </div>
         </form>

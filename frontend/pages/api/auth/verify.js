@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     // Set the Django API URL with fallback
     const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
 
-    // Forward the request to Django backend
+    // Forward the request to Django backend - use JWT-based verification
     const response = await fetch(`${DJANGO_API_URL}/api/auth/verify/`, {
       method: 'POST',
       headers: {

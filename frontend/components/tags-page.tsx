@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { apiRequest } from "@/lib/auth"
 
 interface Tag {
   id?: string | number
@@ -44,9 +45,16 @@ export function TagsPage() {
   const [editingTag, setEditingTag] = useState<Tag | null>(null)
 
   useEffect(() => {
-    fetch("/api/projects/tags/")
-      .then(res => res.json())
-      .then(setTags)
+    const fetchTags = async () => {
+      try {
+        const response = await apiRequest("/api/projects/tags/")
+        const data = await response.json()
+        setTags(data)
+      } catch (error) {
+        console.error("Failed to fetch tags:", error)
+      }
+    }
+    fetchTags()
   }, [])
 
   const filteredTags = tags.filter(
@@ -66,8 +74,12 @@ export function TagsPage() {
   }
 
   const handleDeleteTag = async (id: string | number) => {
-    await fetch(`/api/projects/tags/${id}/`, { method: "DELETE" })
-    setTags(tags => tags.filter(tag => tag.id !== id))
+    try {
+      await apiRequest(`/api/projects/tags/${id}/`, { method: "DELETE" })
+      setTags(tags.filter(tag => tag.id !== id))
+    } catch (error) {
+      console.error("Failed to delete tag:", error)
+    }
   }
 
   const handleSaveTag = async (tagData: Tag) => {
@@ -75,29 +87,24 @@ export function TagsPage() {
       console.log("Saving tag:", tagData)
       if (tagData.id) {
         // Edit existing tag
-        const res = await fetch(`/api/projects/tags/${tagData.id}/`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+        const res = await apiRequest(`/api/projects/tags/${tagData.id}/`, {
+          method: "PATCH",
           body: JSON.stringify(tagData)
         })
-        const updated = await res.json()
-        if (!res.ok) throw new Error(updated.detail || JSON.stringify(updated))
-        setTags(tags => tags.map(tag => tag.id === updated.id ? updated : tag))
+        const updatedTag = await res.json()
+        setTags(tags.map(tag => tag.id === updatedTag.id ? updatedTag : tag))
       } else {
         // Add new tag
-        const res = await fetch(`/api/projects/tags/`, {
+        const res = await apiRequest(`/api/projects/tags/`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(tagData)
         })
-        const created = await res.json()
-        if (!res.ok) throw new Error(created.detail || JSON.stringify(created))
-        setTags(tags => [...tags, created])
+        const newTag = await res.json()
+        setTags([...tags, newTag])
       }
       setModalOpen(false)
-    } catch (err: any) {
-      alert("Failed to save tag: " + (err.message || err))
-      console.error("Failed to save tag:", err)
+    } catch (error) {
+      console.error("Failed to save tag:", error)
     }
   }
 

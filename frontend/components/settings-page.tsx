@@ -52,6 +52,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { apiRequest } from "@/lib/auth"
+import { toast } from "@/components/ui/use-toast"
 
 export function SettingsPage() {
   const { user, isAuthenticated, logout } = useAuth()
@@ -81,40 +83,13 @@ export function SettingsPage() {
     async function fetchProfile() {
       setLoading(true)
       try {
-        const token = localStorage.getItem('authToken')
-        console.log("DEBUG: Token from localStorage:", token ? token.substring(0, 20) + "..." : "No token")
-        if (!token || !isAuthenticated) {
-          setError("No authentication token found")
-          setLoading(false)
-          return
-        }
-
-        console.log("DEBUG: Making request to /api/user-settings/profile/");
-        const res = await fetch("/api/user-settings/profile/", {
-          headers: {
-            'Authorization': `Bearer ${token}`
-            // No Content-Type for GET
-          }
-        });
-        console.log("DEBUG: Response status:", res.status);
-        if (res.status === 401 || res.status === 403) {
-          setError("Authentication failed. Please log in again.");
-          setLoading(false);
-          logout();
-          return;
-        }
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.log("DEBUG: Error response:", errorText);
-          throw new Error("Failed to fetch profile");
-        }
-        const data = await res.json();
-        console.log("DEBUG: Profile data received:", data);
-        setProfileData(data);
-
-      } catch (err) {
-        console.error("DEBUG: Error in fetchProfile:", err)
-        setError("Could not load profile.")
+        const res = await apiRequest("/api/user-settings/profile/", {
+          method: "GET"
+        })
+        const data = await res.json()
+        setProfileData(data)
+      } catch (error) {
+        console.error("Failed to fetch profile:", error)
       } finally {
         setLoading(false)
       }
@@ -133,83 +108,47 @@ export function SettingsPage() {
   }
 
   const handleSave = async () => {
-    setLoading(true);
-    setSuccess(false);
-    setError("");
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        setError("No authentication token found");
-        setLoading(false);
-        return;
-      }
-      // Use FormData for avatar + profile fields
-      const formData = new FormData();
-      Object.entries(profileData).forEach(([key, value]) => {
-        // Skip avatar (handled below)
-        if (key !== 'avatar') {
-          formData.append(key, value ?? '');
-        }
-      });
-      if (avatarFile) {
-        formData.append('avatar', avatarFile);
-      }
-      // If no avatar file, optionally send avatar as empty string (depends on backend)
-      // formData.append('avatar', '');
-      const res = await fetch("/api/user-settings/profile/", {
+      const res = await apiRequest("/api/user-settings/profile/", {
         method: "PATCH",
-        headers: {
-          'Authorization': `Bearer ${token}`
-          // DO NOT set Content-Type; browser will set multipart boundary
-        },
-        body: formData
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error("Failed to save profile: " + errorText);
-      }
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError("Could not save profile. " + (err?.message || ''));
-    } finally {
-      setLoading(false);
+        body: JSON.stringify(profileData)
+      })
+      const updatedProfile = await res.json()
+      setProfileData(updatedProfile)
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
   const handleDeleteAccount = async () => {
-    setDeleteLoading(true)
-    try {
-      const token = localStorage.getItem('authToken')
-      if (!token) {
-        setError("No authentication token found")
-        setDeleteLoading(false)
-        return
-      }
+    if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      return
+    }
 
-      const res = await fetch("/api/user-settings/delete-account", {
-        method: "DELETE",
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+    try {
+      const res = await apiRequest("/api/user-settings/delete-account", {
+        method: "DELETE"
       })
       
-      if (!res.ok) {
-        const errorData = await res.json()
-        throw new Error(errorData.error || "Failed to delete account")
+      if (res.ok) {
+        // Clear local storage and redirect to login
+        localStorage.clear()
+        window.location.href = "/login"
       }
-
-      // Use the auth context logout function
-      await logout()
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(`Could not delete account: ${err.message}`);
-      } else {
-        setError("Could not delete account: An unknown error occurred.");
-      }
-    } finally {
-      setDeleteLoading(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete account. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 

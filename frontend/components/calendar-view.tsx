@@ -12,6 +12,7 @@ import {
   deleteTimeEntry,
   TimeEntry as APITimeEntry
 } from "../utils/time-entries-api"
+import { fetchProjects } from "../utils/projects-api"
 
 interface TimeEntry {
   id: number
@@ -35,7 +36,7 @@ type NewEntry = {
 };
 
 interface Project {
-  id: string
+  id: number
   name: string
   color: string
 }
@@ -53,18 +54,51 @@ export function CalendarView() {
   })
   const [editingEntryId, setEditingEntryId] = useState<number | null>(null)
 
-  // Sample projects - Keep these as available options but no default entries
-  const projects: Project[] = [
-    { id: "1", name: "Web Development", color: "bg-blue-500" },
-    { id: "2", name: "Mobile App", color: "bg-green-500" },
-    { id: "3", name: "Design Work", color: "bg-purple-500" },
-    { id: "4", name: "Client Meeting", color: "bg-orange-500" },
-    { id: "5", name: "Research", color: "bg-pink-500" },
-  ]
+  // Real projects from backend
+  const [projects, setProjects] = useState<Project[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(false)
 
   // Backend time entries
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [loadingEntries, setLoadingEntries] = useState(false)
+
+  // Fetch projects from backend
+  useEffect(() => {
+    setLoadingProjects(true)
+    fetchProjects()
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setProjects(
+            data.map((project) => ({
+              id: project.id,
+              name: project.name || "Unnamed Project",
+              color: getProjectColor(project.id), // Generate color based on ID
+            }))
+          )
+        } else {
+          setProjects([])
+        }
+      })
+      .catch(() => setProjects([]))
+      .finally(() => setLoadingProjects(false))
+  }, [])
+
+  // Generate consistent color for project
+  const getProjectColor = (projectId: number) => {
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500", 
+      "bg-purple-500",
+      "bg-orange-500",
+      "bg-pink-500",
+      "bg-red-500",
+      "bg-yellow-500",
+      "bg-indigo-500",
+      "bg-teal-500",
+      "bg-cyan-500"
+    ]
+    return colors[projectId % colors.length]
+  }
 
   useEffect(() => {
     setLoadingEntries(true)
@@ -72,11 +106,11 @@ export function CalendarView() {
       .then((data: APITimeEntry[]) => {
         setTimeEntries(
           data.map((entry) => {
-            const projectObj = projects.find((p) => String(p.id) === String(entry.project))
+            const projectObj = projects.find((p) => p.id === entry.project)
             return {
               id: entry.id!,
               project: entry.project,
-              projectName: projectObj?.name || String(entry.project),
+              projectName: projectObj?.name || `Project ${entry.project}`,
               projectColor: projectObj?.color || "bg-gray-500",
               description: entry.description,
               startTime: entry.start_time,
@@ -90,7 +124,7 @@ export function CalendarView() {
       })
       .catch(() => setTimeEntries([]))
       .finally(() => setLoadingEntries(false))
-  }, [])
+  }, [projects]) // Re-run when projects change
 
   // Get days in month
   const getDaysInMonth = (year: number, month: number) => {
@@ -220,14 +254,24 @@ export function CalendarView() {
   // Handle adding a new time entry
   const handleAddEntry = async () => {
     if (!selectedDate || !newEntry.project || !newEntry.description || !newEntry.startTime || !newEntry.endTime) {
+      alert("Please fill in all required fields")
+      return
+    }
+
+    if (projects.length === 0) {
+      alert("No projects available. Please create a project first.")
       return
     }
 
     const duration = calculateDuration(newEntry.startTime!, newEntry.endTime!)
-    if (duration <= 0) return
+    if (duration <= 0) {
+      alert("End time must be after start time")
+      return
+    }
 
-    const selectedProject = projects.find((p) => p.name === newEntry.project)
-    const projectId = selectedProject ? Number(selectedProject.id) : Number(newEntry.project)
+    // Use the project ID directly since it's already a number
+    const projectId = Number(newEntry.project)
+    const selectedProject = projects.find((p) => p.id === projectId)
 
     try {
       const created = await createTimeEntry({
@@ -243,7 +287,7 @@ export function CalendarView() {
         {
           id: created.id!,
           project: created.project,
-          projectName: selectedProject?.name || String(created.project),
+          projectName: selectedProject?.name || `Project ${created.project}`,
           projectColor: selectedProject?.color || "bg-gray-500",
           description: created.description,
           startTime: created.start_time,
@@ -252,6 +296,7 @@ export function CalendarView() {
           date: created.date,
           billable: created.billable,
         },
+        ...timeEntries
       ])
       resetForm()
     } catch (e) {
@@ -294,8 +339,9 @@ export function CalendarView() {
     const duration = calculateDuration(newEntry.startTime!, newEntry.endTime!)
     if (duration <= 0) return
 
-    const selectedProject = projects.find((p) => p.name === newEntry.project)
-    const projectId = selectedProject ? Number(selectedProject.id) : Number(newEntry.project)
+    // Use the project ID directly since it's already a number
+    const projectId = Number(newEntry.project)
+    const selectedProject = projects.find((p) => p.id === projectId)
 
     try {
       const updated = await updateTimeEntry(editingEntryId, {
@@ -313,7 +359,7 @@ export function CalendarView() {
             ? {
                 id: updated.id!,
                 project: updated.project,
-                projectName: selectedProject?.name || String(updated.project),
+                projectName: selectedProject?.name || `Project ${updated.project}`,
                 projectColor: selectedProject?.color || "bg-gray-500",
                 description: updated.description,
                 startTime: updated.start_time,
@@ -415,17 +461,23 @@ export function CalendarView() {
                   onValueChange={(value) => setNewEntry({ ...newEntry, project: value === "" ? "" : Number(value) })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
+                    <SelectValue placeholder={loadingProjects ? "Loading projects..." : "Select project"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={String(project.id)}>
-                        <div className="flex items-center">
-                          <div className={`w-3 h-3 rounded-full ${project.color} mr-2`}></div>
-                          {project.name}
-                        </div>
-                      </SelectItem>
-                    ))}
+                    {loadingProjects ? (
+                      <SelectItem value="" disabled>Loading projects...</SelectItem>
+                    ) : projects.length === 0 ? (
+                      <SelectItem value="" disabled>No projects available. Create a project first.</SelectItem>
+                    ) : (
+                      projects.map((project) => (
+                        <SelectItem key={project.id} value={String(project.id)}>
+                          <div className="flex items-center">
+                            <div className={`w-3 h-3 rounded-full ${project.color} mr-2`}></div>
+                            {project.name}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

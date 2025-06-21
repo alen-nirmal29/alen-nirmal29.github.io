@@ -2,25 +2,26 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { auth } from "@/lib/auth"
+import { useAuth } from "./auth-context"
 import { signInWithGoogle } from "@/lib/firebase"
 
 interface GoogleAuthButtonProps {
-  mode: "signup" | "login"
+  mode: 'signup' | 'login'
   onSuccess?: () => void
   onError?: (error: string) => void
 }
 
 export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
 
   const handleGoogleAuth = async () => {
     setIsLoading(true)
-
     try {
       // Use Firebase Google authentication
-      const { user, idToken } = await signInWithGoogle()
-
-      // Send the ID token to backend for verification and user creation/login
+      const { user: firebaseUser, idToken } = await signInWithGoogle()
+      
       const response = await fetch('/api/auth/google', {
         method: 'POST',
         headers: {
@@ -30,34 +31,37 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
           idToken,
           mode, // 'signup' or 'login'
           user: {
-            uid: user.uid,
-            email: user.email,
-            name: user.displayName,
-            picture: user.photoURL,
-            provider: user.provider
+            firebase_uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName,
+            picture: firebaseUser.photoURL,
+            email_verified: true
           }
         })
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Authentication failed')
+        throw new Error(errorData.error || 'Google authentication failed')
       }
 
       const data = await response.json()
 
-      // Store user data in localStorage
-      localStorage.setItem("user", JSON.stringify(data.user))
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("authToken", data.token)
+      if (data.user && data.tokens) {
+        // Store tokens and user data
+        auth.setTokens(data.tokens)
+        auth.setUser(data.user)
+        login(data.user)
+        
+        onSuccess?.()
+        window.location.href = "/dashboard"
+      } else {
+        throw new Error('Invalid response from server')
+      }
 
-      // Redirect to dashboard
-      window.location.href = "/dashboard"
-
-      onSuccess?.()
     } catch (error: any) {
       console.error("Google auth error:", error)
-      onError?.(error.message || "Failed to authenticate with Google. Please try again.")
+      onError?.(error.message || "Google authentication failed.")
     } finally {
       setIsLoading(false)
     }
@@ -72,13 +76,13 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       disabled={isLoading}
     >
       {isLoading ? (
-        <div className="flex items-center">
-          <div className="w-5 h-5 mr-3 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-          {mode === "signup" ? "Signing up..." : "Signing in..."}
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
+          Signing in...
         </div>
       ) : (
-        <>
-          <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+        <div className="flex items-center justify-center">
+          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -96,8 +100,8 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
             />
           </svg>
-          {mode === "signup" ? "Sign up with Google" : "Continue with Google"}
-        </>
+          Sign in with Google
+        </div>
       )}
     </Button>
   )

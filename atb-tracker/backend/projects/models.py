@@ -1,20 +1,29 @@
 from django.db import models
+from users.models import Member
 
 # Create your models here.
 
 class Tag(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     color = models.CharField(max_length=20, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='tags')
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        unique_together = ['name', 'user']
 
 class Client(models.Model):
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='clients')
 
     def __str__(self):
         return self.name
+
+    class Meta:
+        unique_together = ['name', 'user']
 
 class Project(models.Model):
     name = models.CharField(max_length=255)
@@ -22,6 +31,7 @@ class Project(models.Model):
     status = models.CharField(max_length=50, default="Planning")
     progress = models.IntegerField(default=0)
     tags = models.ManyToManyField(Tag, blank=True, related_name='projects')
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='projects')
 
     def __str__(self):
         return self.name
@@ -39,6 +49,7 @@ class Task(models.Model):
     assigned_to = models.CharField(max_length=255, blank=True, null=True)  # Could be ForeignKey to User if you have users
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='tasks')
 
     def __str__(self):
         return f"{self.title} ({self.status})"
@@ -54,6 +65,7 @@ class TimeEntry(models.Model):
     type = models.CharField(max_length=10, choices=[('regular', 'Regular'), ('pomodoro', 'Pomodoro')], default='regular')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='time_entries')
 
     def __str__(self):
         return f"{self.project.name} - {self.date} ({self.duration} min, {self.type})"

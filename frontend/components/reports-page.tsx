@@ -22,6 +22,7 @@ import {
   Legend,
 } from "recharts"
 import { fetchPomodoroSessions, PomodoroSession } from "@/utils/pomodoro-api"
+import { apiRequest } from "@/lib/auth"
 
 export function ReportsPage() {
   const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly">("weekly")
@@ -38,12 +39,12 @@ export function ReportsPage() {
       setLoadingData(true)
       try {
         // Fetch projects from backend
-        const projectsRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`)
-        const projectsData = projectsRes.ok ? await projectsRes.json() : []
+        const projectsRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`)
+        const projectsData = await projectsRes.json()
         setProjects(projectsData)
         // Fetch time entries from backend
-        const timeRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/time-entries/`)
-        const timeData = timeRes.ok ? await timeRes.json() : []
+        const timeRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/time-entries/`)
+        const timeData = await timeRes.json()
         setTimeEntries(timeData)
         // Fetch pomodoro sessions from backend
         const pomodorosData = await fetchPomodoroSessions()

@@ -373,38 +373,40 @@ useEffect(() => {
           fetchPomodoroSessions()
         ])
         setProjects(projectsData)
-        setTimeEntries(timeEntriesData.map((entry: any) => ({
-          ...entry,
-          task: entry.description,
-          duration: entry.duration * 60, // Convert minutes to seconds!
-          project: typeof entry.project === 'object' && entry.project.name ? entry.project.name : entry.project
-        })))
+        
+        // Map backend time entries to frontend format with proper project name resolution
+        const mappedTimeEntries = timeEntriesData.map((entry: any) => {
+          // Find the project name from the projects array
+          let projectName = String(entry.project);
+          const projectObj = projectsData.find((p: Project) => p.id == entry.project);
+          if (projectObj && projectObj.name) {
+            projectName = projectObj.name;
+          }
+          
+          return {
+            id: entry.id?.toString() ?? '',
+            task: entry.description ?? '',
+            project: projectName, // Use project name for consistency
+            duration: (entry.duration || 0) * 60, // Convert minutes to seconds
+            date: entry.date,
+            type: entry.type || 'regular',
+            billable: entry.billable || false,
+            tags: [] as string[],
+          };
+        });
+        
+        setTimeEntries(mappedTimeEntries)
         setPomodoroSessions(pomodorosData)
+        
+        // Store projects in localStorage for consistency
+        if (typeof window !== "undefined") {
+          localStorage.setItem("userProjects", JSON.stringify(projectsData))
+        }
       } catch (err) {
-        // Optionally handle error
         console.error("Failed to fetch dashboard data:", err)
       }
     }
     fetchInitialData()
-    // Click outside logic for dropdowns
-    // const handleClickOutside = (event: MouseEvent) => {
-    //   const target = event.target;
-    //   if (target instanceof Element) {
-    //     if (!target.closest(".notification-dropdown") && !target.closest(".notification-button")) {
-    //       setShowNotifications(false);
-    //     }
-    //     if (!target.closest(".profile-dropdown") && !target.closest(".profile-button")) {
-    //       setShowProfileDropdown(false);
-    //     }
-    //     if (!target.closest(".project-dropdown") && !target.closest(".project-button")) {
-    //       setShowProjectDropdown(false);
-    //     }
-    //   }
-    // }
-    // document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      // document.removeEventListener("mousedown", handleClickOutside)
-    }
   }, [])
 
   // Add this useEffect after the existing ones to refresh projects when returning to TIME TRACKER
@@ -414,6 +416,8 @@ useEffect(() => {
       if (savedProjects) {
         setProjects(JSON.parse(savedProjects))
       }
+      // Refresh time entries when navigating to TIME TRACKER
+      refreshTimeEntries()
     }
   }, [activePage])
 
@@ -429,6 +433,49 @@ useEffect(() => {
       }
     }
   }, [activePage])
+
+  // Add a function to refresh time entries from backend
+  const refreshTimeEntries = async () => {
+    try {
+      const { fetchTimeEntries } = await import("@/utils/time-entries-api")
+      const timeEntriesData = await fetchTimeEntries()
+      
+      const mappedTimeEntries = timeEntriesData.map((entry: any) => {
+        let projectName = String(entry.project);
+        const projectObj = projects.find((p: Project) => p.id == entry.project);
+        if (projectObj && projectObj.name) {
+          projectName = projectObj.name;
+        }
+        
+        return {
+          id: entry.id?.toString() ?? '',
+          task: entry.description ?? '',
+          project: projectName,
+          duration: (entry.duration || 0) * 60, // Convert minutes to seconds
+          date: entry.date,
+          type: entry.type || 'regular',
+          billable: entry.billable || false,
+          tags: [] as string[],
+        };
+      });
+      
+      setTimeEntries(mappedTimeEntries)
+    } catch (err) {
+      console.error("Failed to refresh time entries:", err)
+    }
+  }
+
+  // Add periodic refresh of time entries to ensure data consistency
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only refresh if not currently tracking to avoid interrupting the timer
+      if (!isTracking) {
+        refreshTimeEntries()
+      }
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [isTracking, projects]) // Dependencies to ensure proper refresh
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -469,26 +516,11 @@ useEffect(() => {
             date: new Date().toISOString().split("T")[0],
             billable: false,
           }
-          const newEntry = await createTimeEntry(entryData)
-          // Map API TimeEntry (from backend) to UI TimeEntry
-          const mappedEntry = {
-            id: newEntry.id?.toString() ?? '',
-            task: newEntry.description ?? '',
-            project: newEntry.project,
-            duration: newEntry.duration * 60, // API duration is in minutes, UI expects seconds
-            date: newEntry.date,
-            type: 'regular', // or infer from context if needed
-            billable: newEntry.billable,
-            tags: [] as string[], // Add mapping if tags are implemented in backend
-          };
-          setTimeEntries((prev) => [
-  ...prev,
-  {
-    ...mappedEntry,
-    project: String(mappedEntry.project), // keep UI as string for consistency
-    type: 'regular', // explicitly restrict to valid TimeEntry type
-  } as TimeEntry,
-])
+          await createTimeEntry(entryData)
+          
+          // Refresh time entries from backend to ensure data consistency
+          await refreshTimeEntries()
+          
         } catch (err) {
           console.error("Failed to save time entry:", err)
         }
@@ -534,20 +566,11 @@ useEffect(() => {
           date: new Date().toISOString().split("T")[0],
           billable: false,
         }
-        const newEntry = await createTimeEntry(entryData)
-        setTimeEntries((prev) => [
-  ...prev,
-  {
-    id: newEntry.id?.toString() ?? '',
-    task: newEntry.description ?? '',
-    project: String(newEntry.project), // ensure project is always a string
-    duration: (newEntry.duration || 0) * 60, // API duration is in minutes, UI expects seconds
-    date: newEntry.date,
-    type: 'pomodoro' as 'pomodoro',
-    billable: newEntry.billable,
-    tags: [] as string[], // Add mapping if tags are implemented in backend
-  },
-])
+        await createTimeEntry(entryData)
+        
+        // Refresh time entries from backend to ensure data consistency
+        await refreshTimeEntries()
+        
       } catch (err) {
         console.error("Failed to save pomodoro entry:", err)
       }
@@ -586,35 +609,42 @@ useEffect(() => {
   const getRecentProjects = () => {
     // Use backend-fetched projects and time entries
     const projectTotals = timeEntries.reduce(
-  (acc, entry) => {
-    let projectName: string = typeof entry.project === 'string' ? entry.project : '';
-    if (typeof entry.project === 'number' || (typeof entry.project === 'string' && !isNaN(Number(entry.project)))) {
-      const found = projects.find((p: Project) => p.id == entry.project);
-      if (found && found.name) projectName = found.name;
-      else projectName = String(entry.project);
-    } else if (
-      typeof entry.project === 'object' &&
-      entry.project !== null &&
-      'name' in entry.project &&
-      typeof entry.project.name === 'string'
-    ) {
-      projectName = entry.project.name;
-    }
-    if (!acc[projectName]) {
-      acc[projectName] = 0;
-    }
-    acc[projectName] += entry.duration;
-    return acc;
-  },
-  {} as Record<string, number>,
-);
+      (acc, entry) => {
+        let projectName: string = typeof entry.project === 'string' ? entry.project : '';
+        
+        // Handle different project formats
+        if (typeof entry.project === 'number' || (typeof entry.project === 'string' && !isNaN(Number(entry.project)))) {
+          const found = projects.find((p: Project) => p.id == entry.project);
+          if (found && found.name) projectName = found.name;
+          else projectName = String(entry.project);
+        } else if (
+          typeof entry.project === 'object' &&
+          entry.project !== null &&
+          'name' in entry.project &&
+          typeof entry.project.name === 'string'
+        ) {
+          projectName = entry.project.name;
+        }
+        
+        if (!acc[projectName]) {
+          acc[projectName] = 0;
+        }
+        acc[projectName] += entry.duration;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+    
+    // Get all project names from the projects array
     const allProjects = projects.map((p: Project) => p.name);
     const uniqueProjects = Array.from(new Set([...allProjects, ...Object.keys(projectTotals)]));
+    
     return uniqueProjects
       .map((project) => ({
         project,
         duration: projectTotals[project] || 0,
       }))
+      .filter((item) => item.duration > 0) // Only show projects with logged time
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 4);
   };

@@ -38,7 +38,7 @@ import { TagsPage } from "@components/tags-page"
 import { useAuth } from "@components/auth/auth-context"
 import { useRouter } from "next/navigation"
 import { fetchPomodoroSessions, PomodoroSession } from "@/utils/pomodoro-api"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import ProtectedRoute from "@/components/auth/protected-route"
 
 // Notification type definitions
 export type NotificationType = "deadline" | "task" | "reminder";
@@ -102,7 +102,7 @@ interface TimeEntry {
   tags?: string[]
 }
 
-export default function DashboardPageWrapper() {
+export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <Dashboard />
@@ -153,8 +153,8 @@ const [projects, setProjects] = useState<Project[]>([])
       if (typeof user?.name === 'string') {
         return user.name
           .split(" ")
-          .map((n) => n[0])
-          .join("")
+        .map((n) => n[0])
+        .join("")
           .toUpperCase() || "U";
       }
       return "U";
@@ -1008,17 +1008,17 @@ useEffect(() => {
                                     const projectClient = typeof project.client === 'string' ? project.client : 'No client';
                                     
                                     return (
-                                      <button
-                                        key={project.id}
-                                        onClick={() => {
+                                    <button
+                                      key={project.id}
+                                      onClick={() => {
                                           setSelectedProject(projectName)
-                                          setShowProjectDropdown(false)
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center justify-between"
-                                      >
+                                        setShowProjectDropdown(false)
+                                      }}
+                                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center justify-between"
+                                    >
                                         <span>{projectName}</span>
                                         <span className="text-xs text-gray-500">{projectClient}</span>
-                                      </button>
+                                    </button>
                                     );
                                   })
                                 ) : (
@@ -1129,21 +1129,21 @@ useEffect(() => {
                         const duration = typeof project.duration === 'number' ? project.duration : 0;
                         
                         return (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                        <div
+                          key={index}
+                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
                             onClick={() => handleProjectClick(projectName)}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div
-                                className={`w-3 h-3 rounded-full ${
-                                  ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500"][index % 4]
-                                }`}
-                              ></div>
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div
+                              className={`w-3 h-3 rounded-full ${
+                                ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500"][index % 4]
+                              }`}
+                            ></div>
                               <span className="font-medium">{projectName}</span>
-                            </div>
-                            <Badge variant="secondary">{formatDuration(duration)}</Badge>
                           </div>
+                            <Badge variant="secondary">{formatDuration(duration)}</Badge>
+                        </div>
                         );
                       })
                     ) : (

@@ -24,20 +24,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const tokens = auth.getTokens()
       if (!tokens?.access) {
-        console.log('No access token found');
-        return false;
+        console.log("No access token found")
+        return false
       }
 
-      console.log('Verifying token...');
+      console.log("Verifying token...")
 
       // Try to refresh token if needed
       try {
         const newTokens = await auth.refreshToken()
         if (newTokens) {
-          console.log('Token refreshed successfully');
+          console.log("Token refreshed successfully")
         }
       } catch (error) {
-        console.error('Token refresh failed:', error);
+        console.error("Token refresh failed:", error)
         // Token refresh failed, user needs to login again
         auth.logout()
         return false
@@ -45,78 +45,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const currentUser = auth.getUser()
       if (currentUser) {
-        console.log('User found:', currentUser);
+        console.log("User found:", currentUser)
         setUser(currentUser)
         setIsAuthenticated(true)
         return true
       }
-      
-      console.log('No user found in storage');
+
+      console.log("No user found in storage")
       return false
     } catch (error) {
       console.error("Token verification error:", error)
       auth.logout()
       return false
+    } finally {
+      setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    // Check for existing authentication on mount
-    const checkAuth = async () => {
-      try {
-        console.log('Checking authentication on mount...');
-        const isAuth = auth.isAuthenticated()
-        console.log('isAuthenticated result:', isAuth);
-        
-        if (isAuth) {
-          const currentUser = auth.getUser()
-          console.log('Current user from storage:', currentUser);
-          
-          if (currentUser) {
-            setUser(currentUser)
-            setIsAuthenticated(true)
-            console.log('User set from storage');
-          } else {
-            console.log('No user in storage, trying to verify token...');
-            // Try to verify token
-            const verified = await verifyToken()
-            if (!verified) {
-              console.log('Token verification failed, clearing state');
-              setUser(null)
-              setIsAuthenticated(false)
-            }
-          }
-        } else {
-          console.log('Not authenticated, clearing state');
-          setUser(null)
-          setIsAuthenticated(false)
-        }
-      } catch (error) {
-        console.error("Error checking authentication:", error)
-        auth.logout()
-        setUser(null)
-        setIsAuthenticated(false)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkAuth()
+    verifyToken()
   }, [])
 
   const login = (userData: User) => {
-    console.log('AuthContext: login called with userData:', userData);
+    console.log("AuthContext: login called with userData:", userData)
     setUser(userData)
     setIsAuthenticated(true)
-    localStorage.setItem('isAuthenticated', 'true')
-    console.log('AuthContext: Authentication state updated');
+    localStorage.setItem("isAuthenticated", "true")
+    console.log("AuthContext: Authentication state updated")
   }
 
   const logout = () => {
     auth.logout()
     setUser(null)
     setIsAuthenticated(false)
-    window.location.href = "/login"
+    // Redirect logic should be handled by the UI components (e.g., in a protected route)
   }
 
   return (

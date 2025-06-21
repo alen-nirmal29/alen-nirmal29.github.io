@@ -231,6 +231,7 @@ export function PomodoroTimer({ onTimeUpdate, onComplete }: PomodoroTimerProps) 
                 setTimeLeft(customWorkTime * 60);
                 setIsRunning(false);
                 setCurrentTask("");
+                setCompletedPomodoros(0);
               }}
               className="w-full"
             >

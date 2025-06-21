@@ -146,15 +146,19 @@ const [projects, setProjects] = useState<Project[]>([])
   const router = useRouter()
 
   const profileData = {
-    name: user?.name || "User",
-    email: user?.email || "user@example.com",
-    avatar: user?.picture || "/placeholder.svg?height=32&width=32",
-    initials:
-      user?.name
-        ?.split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase() || "U",
+    name: typeof user?.name === 'string' ? user.name : "User",
+    email: typeof user?.email === 'string' ? user.email : "user@example.com",
+    avatar: typeof user?.picture === 'string' ? user.picture : "/placeholder.svg?height=32&width=32",
+    initials: (() => {
+      if (typeof user?.name === 'string') {
+        return user.name
+          .split(" ")
+          .map((n) => n[0])
+          .join("")
+          .toUpperCase() || "U";
+      }
+      return "U";
+    })(),
   }
 
   // Initialize global teamTags if it doesn't exist
@@ -251,6 +255,10 @@ useEffect(() => {
     // --- DEADLINE NOTIFICATIONS ---
     projects.forEach((project) => {
       if (!project.deadline || project.status === "Completed") return;
+      
+      // Ensure project name is a string
+      const projectName = typeof project.name === 'string' ? project.name : 'Unknown Project';
+      
       const deadlineDate = new Date(project.deadline);
       const now = new Date();
       const diffTime = deadlineDate.getTime() - now.getTime();
@@ -261,15 +269,15 @@ useEffect(() => {
         const alreadyNotified = notifications.some(
           (n) =>
             n.type === "deadline" &&
-            n.title.includes(project.name) &&
+            n.title.includes(projectName) &&
             n.message.includes(project.deadline ?? "") &&
             !n.read
         );
         if (!alreadyNotified) {
           newNotifications.push({
             id: `${project.id}-deadline-${project.deadline}`,
-            title: `Project deadline approaching: ${project.name}`,
-            message: `The deadline for project \"${project.name}\" is on ${deadlineDate.toLocaleDateString()}. (${diffDays === 0 ? "Today" : diffDays + " day(s) left"})\n${project.deadline}`,
+            title: `Project deadline approaching: ${projectName}`,
+            message: `The deadline for project \"${projectName}\" is on ${deadlineDate.toLocaleDateString()}. (${diffDays === 0 ? "Today" : diffDays + " day(s) left"})\n${project.deadline}`,
             type: "deadline",
             timestamp: new Date(),
             read: false,
@@ -367,15 +375,36 @@ useEffect(() => {
   useEffect(() => {
     async function fetchInitialData() {
       try {
+        console.log('fetchInitialData - starting...');
         const [projectsData, timeEntriesData, pomodorosData] = await Promise.all([
           (await import("@/utils/projects-api")).fetchProjects(),
           (await import("@/utils/time-entries-api")).fetchTimeEntries(),
           fetchPomodoroSessions()
         ])
-        setProjects(projectsData)
+        
+        console.log('fetchInitialData - projectsData:', projectsData);
+        console.log('fetchInitialData - timeEntriesData:', timeEntriesData);
+        console.log('fetchInitialData - pomodorosData:', pomodorosData);
+        
+        // Validate projects data before setting
+        const validatedProjects = Array.isArray(projectsData) ? projectsData.filter(project => {
+          if (!project || typeof project !== 'object') {
+            console.warn('Invalid project data:', project);
+            return false;
+          }
+          if (!project.name || typeof project.name !== 'string') {
+            console.warn('Project missing name or invalid name:', project);
+            return false;
+          }
+          return true;
+        }) : [];
+        
+        console.log('fetchInitialData - validatedProjects:', validatedProjects);
+        setProjectsSafe(validatedProjects)
         
         // Map backend time entries to frontend format with proper project name resolution
         const mappedTimeEntries = timeEntriesData.map((entry: any) => {
+          console.log('fetchInitialData - processing entry:', entry);
           // Find the project name from the projects array
           let projectName = String(entry.project);
           const projectObj = projectsData.find((p: Project) => p.id == entry.project);
@@ -383,7 +412,7 @@ useEffect(() => {
             projectName = projectObj.name;
           }
           
-          return {
+          const mappedEntry = {
             id: entry.id?.toString() ?? '',
             task: entry.description ?? '',
             project: projectName, // Use project name for consistency
@@ -393,8 +422,11 @@ useEffect(() => {
             billable: entry.billable || false,
             tags: [] as string[],
           };
+          console.log('fetchInitialData - mapped entry:', mappedEntry);
+          return mappedEntry;
         });
         
+        console.log('fetchInitialData - mappedTimeEntries:', mappedTimeEntries);
         setTimeEntries(mappedTimeEntries)
         setPomodoroSessions(pomodorosData)
         
@@ -437,17 +469,20 @@ useEffect(() => {
   // Add a function to refresh time entries from backend
   const refreshTimeEntries = async () => {
     try {
+      console.log('refreshTimeEntries - starting...');
       const { fetchTimeEntries } = await import("@/utils/time-entries-api")
       const timeEntriesData = await fetchTimeEntries()
+      console.log('refreshTimeEntries - timeEntriesData:', timeEntriesData);
       
       const mappedTimeEntries = timeEntriesData.map((entry: any) => {
+        console.log('refreshTimeEntries - processing entry:', entry);
         let projectName = String(entry.project);
         const projectObj = projects.find((p: Project) => p.id == entry.project);
         if (projectObj && projectObj.name) {
           projectName = projectObj.name;
         }
         
-        return {
+        const mappedEntry = {
           id: entry.id?.toString() ?? '',
           task: entry.description ?? '',
           project: projectName,
@@ -457,8 +492,11 @@ useEffect(() => {
           billable: entry.billable || false,
           tags: [] as string[],
         };
+        console.log('refreshTimeEntries - mapped entry:', mappedEntry);
+        return mappedEntry;
       });
       
+      console.log('refreshTimeEntries - mappedTimeEntries:', mappedTimeEntries);
       setTimeEntries(mappedTimeEntries)
     } catch (err) {
       console.error("Failed to refresh time entries:", err)
@@ -607,6 +645,10 @@ useEffect(() => {
 
   // Get recent projects with time
   const getRecentProjects = () => {
+    // Debug logging
+    console.log('getRecentProjects - timeEntries:', timeEntries);
+    console.log('getRecentProjects - projects:', projects);
+    
     // Use backend-fetched projects and time entries
     const projectTotals = timeEntries.reduce(
       (acc, entry) => {
@@ -636,17 +678,31 @@ useEffect(() => {
     );
     
     // Get all project names from the projects array
-    const allProjects = projects.map((p: Project) => p.name);
+    const allProjects = projects.map((p: Project) => {
+      // Ensure project name is always a string
+      if (p && typeof p === 'object' && p.name && typeof p.name === 'string') {
+        return p.name;
+      }
+      console.warn('Invalid project in projects array:', p);
+      return 'Unknown Project';
+    });
     const uniqueProjects = Array.from(new Set([...allProjects, ...Object.keys(projectTotals)]));
     
-    return uniqueProjects
-      .map((project) => ({
-        project,
-        duration: projectTotals[project] || 0,
-      }))
+    const result = uniqueProjects
+      .map((project) => {
+        // Ensure project is always a string
+        const projectName = typeof project === 'string' ? project : 'Unknown Project';
+        return {
+          project: projectName,
+          duration: projectTotals[projectName] || 0,
+        };
+      })
       .filter((item) => item.duration > 0) // Only show projects with logged time
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 4);
+    
+    console.log('getRecentProjects - result:', result);
+    return result;
   };
 
   // Helper to normalize date to YYYY-MM-DD using local time
@@ -723,13 +779,60 @@ useEffect(() => {
   useEffect(() => {
     // Defensive: always set to array if getRecentProjects returns undefined/null
     const recents = getRecentProjects();
-    setRecentProjects(Array.isArray(recents) ? recents : []);
+    console.log('useEffect - recents from getRecentProjects:', recents);
+    console.log('useEffect - recents type:', typeof recents);
+    console.log('useEffect - recents isArray:', Array.isArray(recents));
+    
+    if (Array.isArray(recents)) {
+      // Additional validation for each item
+      const validatedRecents = recents.map((item, index) => {
+        console.log(`useEffect - validating item ${index}:`, item);
+        if (item && typeof item === 'object') {
+          return {
+            project: typeof item.project === 'string' ? item.project : 'Unknown Project',
+            duration: typeof item.duration === 'number' ? item.duration : 0,
+          };
+        }
+        console.warn(`useEffect - invalid item at index ${index}:`, item);
+        return null;
+      }).filter(Boolean);
+      
+      console.log('useEffect - validated recents:', validatedRecents);
+      setRecentProjects(validatedRecents);
+    } else {
+      console.warn('useEffect - getRecentProjects did not return an array:', recents);
+      setRecentProjects([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeEntries, projects]); // <-- add 'projects' as dependency
 
   const weeklySummary = getWeeklySummary()
   const todayTotal = getTodayTotal()
   const weekTotal = getWeekTotal()
+
+  // Safe setter for projects to prevent invalid objects
+  const setProjectsSafe = (newProjects: Project[]) => {
+    if (!Array.isArray(newProjects)) {
+      console.warn('setProjectsSafe - newProjects is not an array:', newProjects);
+      setProjects([]);
+      return;
+    }
+    
+    const validatedProjects = newProjects.filter(project => {
+      if (!project || typeof project !== 'object') {
+        console.warn('setProjectsSafe - invalid project:', project);
+        return false;
+      }
+      if (!project.name || typeof project.name !== 'string') {
+        console.warn('setProjectsSafe - project missing name or invalid name:', project);
+        return false;
+      }
+      return true;
+    });
+    
+    console.log('setProjectsSafe - validated projects:', validatedProjects);
+    setProjects(validatedProjects);
+  };
 
   const renderMainContent = () => {
     switch (activePage) {
@@ -899,19 +1002,25 @@ useEffect(() => {
                                   No Project
                                 </button>
                                 {projects.length > 0 ? (
-                                  projects.map((project) => (
-                                    <button
-                                      key={project.id}
-                                      onClick={() => {
-                                        setSelectedProject(project.name)
-                                        setShowProjectDropdown(false)
-                                      }}
-                                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center justify-between"
-                                    >
-                                      <span>{project.name}</span>
-                                      <span className="text-xs text-gray-500">{project.client}</span>
-                                    </button>
-                                  ))
+                                  projects.map((project) => {
+                                    // Ensure project name and client are strings
+                                    const projectName = typeof project.name === 'string' ? project.name : 'Unnamed Project';
+                                    const projectClient = typeof project.client === 'string' ? project.client : 'No client';
+                                    
+                                    return (
+                                      <button
+                                        key={project.id}
+                                        onClick={() => {
+                                          setSelectedProject(projectName)
+                                          setShowProjectDropdown(false)
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center justify-between"
+                                      >
+                                        <span>{projectName}</span>
+                                        <span className="text-xs text-gray-500">{projectClient}</span>
+                                      </button>
+                                    );
+                                  })
                                 ) : (
                                   <div className="px-3 py-4 text-center text-gray-500">
                                     <FolderOpen className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -997,23 +1106,46 @@ useEffect(() => {
                         <p className="text-sm">Loading...</p>
                       </div>
                     ) : Array.isArray(recentProjects) && recentProjects.length > 0 ? (
-                      recentProjects.map((project, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
-                          onClick={() => handleProjectClick(project.project)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500"][index % 4]
-                              }`}
-                            ></div>
-                            <span className="font-medium">{project.project}</span>
+                      recentProjects.map((project, index) => {
+                        // Comprehensive validation to ensure no objects are rendered
+                        if (!project || typeof project !== 'object') {
+                          console.warn('Invalid project data:', project);
+                          return null;
+                        }
+                        
+                        // Ensure project name is always a string
+                        let projectName = 'Unknown Project';
+                        if (project.project) {
+                          if (typeof project.project === 'string') {
+                            projectName = project.project;
+                          } else if (typeof project.project === 'object' && project.project.name) {
+                            projectName = String(project.project.name);
+                          } else {
+                            projectName = String(project.project);
+                          }
+                        }
+                        
+                        // Ensure duration is a number
+                        const duration = typeof project.duration === 'number' ? project.duration : 0;
+                        
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                            onClick={() => handleProjectClick(projectName)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-3 h-3 rounded-full ${
+                                  ["bg-blue-500", "bg-green-500", "bg-orange-500", "bg-purple-500"][index % 4]
+                                }`}
+                              ></div>
+                              <span className="font-medium">{projectName}</span>
+                            </div>
+                            <Badge variant="secondary">{formatDuration(duration)}</Badge>
                           </div>
-                          <Badge variant="secondary">{formatDuration(project.duration)}</Badge>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="text-center py-8 text-gray-500">
                         <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />

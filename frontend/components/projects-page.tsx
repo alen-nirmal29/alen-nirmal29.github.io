@@ -34,6 +34,7 @@ import { Project } from "@/types/project";
 import { Textarea } from "@/components/ui/textarea"
 import { fetchProjects, createProject, updateProject } from "@/utils/projects-api"
 import { apiRequest } from "@/lib/auth"
+import React from "react"
 
 // Add this function for backend delete
 async function deleteProjectFromBackend(projectId: number) {
@@ -102,7 +103,13 @@ const [filters, setFilters] = useState<Filters>({
   // Dynamic data based on created projects
   const clients = [
     "All Clients",
-    ...Array.from(new Set(projects.map((p) => p.client))).filter((c) => c && c !== ""),
+    ...Array.from(new Set(projects.map((p) => {
+      // Handle client object structure from backend
+      if (p.client && typeof p.client === 'object' && p.client.name) {
+        return p.client.name;
+      }
+      return p.client || "";
+    }))).filter((c) => c && c !== ""),
   ];
   
   const billableOptions = ["All", "Billable", "Non-Billable"];
@@ -272,10 +279,15 @@ const [filters, setFilters] = useState<Filters>({
   }
 
   const filteredProjects = projects.filter((project) => {
+    // Handle client object structure from backend
+    const projectClient = project.client && typeof project.client === 'object' && project.client.name 
+      ? project.client.name 
+      : project.client || "";
+    
     const matchesSearch =
       (project.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (project.client?.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    const matchesClient = !filters.client || filters.client === "All Clients" || project.client === filters.client;
+      (projectClient.toLowerCase() || "").includes(searchTerm.toLowerCase());
+    const matchesClient = !filters.client || filters.client === "All Clients" || projectClient === filters.client;
 
     const matchesBillable =
       !filters.billable ||
@@ -471,12 +483,11 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                 <SelectContent>
                   {clients.map((client) => (
                     <SelectItem key={client} value={client}>
-  {client}
-</SelectItem>
+                      {client}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
 
               <Select
                 value={filters.billable ?? ""}
@@ -506,8 +517,8 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                 <SelectContent>
                   {templates.map((template) => (
                     <SelectItem key={template} value={template}>
-  {template}
-</SelectItem>
+                      {template}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -520,46 +531,67 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-7xl mx-auto">
           {/* Projects Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => {
-              const StatusIcon = getStatusIcon(project.status ?? "Unknown")
-              const nextStatus = getNextStatus(project.status ?? "Unknown")
+              // Debug logging to see what data we're working with
+              console.log('Rendering project:', project)
+              if (project.members) {
+                console.log('Project members:', project.members)
+              }
+              
+              // Validate that all data is properly structured
+              if (typeof project.client === 'object' && project.client) {
+                console.log('Client object:', project.client)
+              }
+              
+              // Comprehensive validation for all project properties
+              const projectName = typeof project.name === 'string' ? project.name : 'Unnamed Project';
+              const projectDescription = typeof project.description === 'string' ? project.description : 'No description';
+              const projectClient = project.client && typeof project.client === 'object' && project.client.name 
+                ? project.client.name 
+                : (typeof project.client === 'string' ? project.client : 'No client');
+              const projectStatus = typeof project.status === 'string' ? project.status : 'Unknown';
+              const projectProgress = typeof project.progress === 'number' ? project.progress : 0;
+              const projectTotalHours = typeof project.totalHours === 'number' ? project.totalHours : 0;
+              const projectBillableRate = typeof project.billableRate === 'number' ? project.billableRate : 0;
+              const projectBillableHours = typeof project.billableHours === 'number' ? project.billableHours : 0;
+              const projectTotalCost = typeof project.totalCost === 'number' ? project.totalCost : 0;
+              const projectIsBillable = typeof project.isBillable === 'boolean' ? project.isBillable : false;
+              const projectCreatedDate = project.createdDate ? new Date(project.createdDate).toLocaleDateString() : "Unknown";
+              const projectDeadline = project.deadline ? new Date(project.deadline).toLocaleDateString() : "No deadline";
+              
+              const nextStatus = getNextStatus(projectStatus)
               const overdue = isDeadlineOverdue(project.deadline ?? "");
               const near = isDeadlineNear(project.deadline ?? "");
 
               return (
                 <Card key={project.id} className="bg-white/90 backdrop-blur-sm hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    {/* Deadline Warning */}
-                    {(overdue || near) && project.status !== "Completed" && (
-                        <div
-                          className={`flex items-center space-x-2 p-2 rounded-lg mb-3 ${
-                            overdue
-                              ? "bg-red-50 border border-red-200"
-                              : "bg-orange-50 border border-orange-200"
-                          }`}
-                        >
-                          <AlertTriangle
-                            className={`h-4 w-4 ${
-                              overdue ? "text-red-500" : "text-orange-500"
-                            }`}
-                          />
-                          <span
-                            className={`text-xs font-medium ${
-                              overdue ? "text-red-700" : "text-orange-700"
-                            }`}
-                          >
-                            {overdue
-                              ? "⚠️ Deadline overdue! Complete ASAP"
-                              : "⏰ Deadline approaching soon"}
-                          </span>
+                  {/* Deadline Warning */}
+                  {project.deadline && isDeadlineOverdue(project.deadline) && projectStatus !== "Completed" && (
+                    <div className="bg-red-50 border-l-4 border-red-400 p-3">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <AlertTriangle className="h-5 w-5 text-red-400" />
                         </div>
-                      )}
+                        <div className="ml-3">
+                          <p className="text-sm text-red-700">
+                            <strong>Deadline Overdue:</strong> This project was due on{" "}
+                            {projectDeadline}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
+                  <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg font-semibold text-gray-800 mb-1">{(project.name ?? "Unnamed Project").toString()}</CardTitle>
-                        <CardDescription className="text-sm text-gray-600">{(project.description ?? "No description").toString()}</CardDescription>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-lg font-semibold text-gray-800 mb-1">
+                          {projectName}
+                        </CardTitle>
+                        <CardDescription className="text-sm text-gray-600">
+                          {projectDescription}
+                        </CardDescription>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -568,57 +600,54 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEditProject(project)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Edit Project
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteProject(project.id)}>
                             <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
+                            Delete Project
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
 
+                    {/* Status Badge and Actions */}
                     <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(project.status ?? "Unknown")}>
-                          <StatusIcon className="h-3 w-3 mr-1" />
-                          {project.status ?? "Unknown"}
-                        </Badge>
-                        {project.status !== "Completed" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(Number(project.id), nextStatus)}
-                            className="h-6 px-2 text-xs border-purple-200 text-purple-600 hover:bg-purple-50"
-                          >
-                            → {nextStatus}
-                          </Button>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <Building className="h-4 w-4" />
-                        <span>{(project.client ?? "No client").toString()}</span>
-                      </div>
+                      <Badge className={getStatusColor(projectStatus)}>
+                        {React.createElement(getStatusIcon(projectStatus), { className: "h-3 w-3 mr-1" })}
+                        {projectStatus}
+                      </Badge>
+                      {projectStatus !== "Completed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleStatusChange(Number(project.id), nextStatus)}
+                          disabled={statusLoading[project.id]}
+                        >
+                          {statusLoading[project.id] ? "Updating..." : `${projectStatus} → ${nextStatus}`}
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-4">
+                    {/* Client Info */}
+                    <div className="flex items-center text-sm text-gray-600">
+                      <User className="h-4 w-4 mr-1" />
+                      <span>{projectClient}</span>
+                    </div>
+
                     {/* Progress Bar */}
                     <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-gray-600">Progress</span>
-                        <span className="font-medium">{project.progress ?? 0}%</span>
+                        <span className="font-medium">{projectProgress}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${project.progress ?? 0}%` }}
+                          style={{ width: `${projectProgress}%` }}
                         ></div>
                       </div>
                     </div>
@@ -630,7 +659,7 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                           <Clock className="h-4 w-4 mr-1" />
                           <span>Total Hours</span>
                         </div>
-                        <div className="font-semibold">{project.totalHours ?? 0}h</div>
+                        <div className="font-semibold">{projectTotalHours}h</div>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center text-gray-600">
@@ -638,13 +667,13 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                           <span>Total Cost</span>
                         </div>
                         <div className="font-semibold">
-                          {project.isBillable ? `$${(Number(project.totalCost ?? 0)).toLocaleString()}` : "Non-billable"}
+                          {projectIsBillable ? `$${projectTotalCost.toLocaleString()}` : "Non-billable"}
                         </div>
                       </div>
                     </div>
 
                     {/* Billable Rate */}
-                    {project.isBillable && (
+                    {projectIsBillable && (
                       <div className="bg-green-50 rounded-lg p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -652,10 +681,10 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                             <span className="text-sm font-medium text-green-800">Billable Rate</span>
                           </div>
                         </div>
-                        <div className="text-lg font-bold text-green-600 mt-1">${Number(project.billableRate ?? 0)}/hour</div>
+                        <div className="text-lg font-bold text-green-600 mt-1">${projectBillableRate}/hour</div>
                         <div className="text-xs text-green-600 mt-1">
-                          {project.billableHours ?? 0}h billable • $
-                          {((Number(project.billableHours ?? 0)) * (Number(project.billableRate ?? 0))).toLocaleString()} earned
+                          {projectBillableHours}h billable • $
+                          {(projectBillableHours * projectBillableRate).toLocaleString()} earned
                         </div>
                       </div>
                     )}
@@ -678,15 +707,35 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                               "bg-gradient-to-br from-red-500 to-red-600 text-white",
                             ]
                             const colorClass = colors[index % colors.length]
+                            
+                            // Ensure member has required properties with comprehensive validation
+                            let memberName = 'Unknown'
+                            let memberId = index
+                            
+                            try {
+                              if (member && typeof member === 'object') {
+                                memberName = member.name || member.first_name || member.display_name || 'Unknown'
+                                memberId = member.id || member.user_id || index
+                              }
+                            } catch (error) {
+                              console.error('Error processing member:', member, error)
+                              memberName = 'Unknown'
+                              memberId = index
+                            }
+                            
+                            // Ensure memberName is a string
+                            if (typeof memberName !== 'string') {
+                              memberName = String(memberName) || 'Unknown'
+                            }
 
                             return (
                               <div
-                                key={member.id}
+                                key={memberId}
                                 className={`h-8 w-8 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${colorClass}`}
-                                title={member.name}
+                                title={memberName}
                               >
                                 <span className="text-xs font-semibold">
-                                  {member.name
+                                  {memberName
                                     .split(" ")
                                     .map((n) => n[0])
                                     .join("")
@@ -711,12 +760,19 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                       <div className="text-sm text-gray-600 mb-2">Recent Activity</div>
                       {Array.isArray(project.recentActivity) && project.recentActivity.length > 0 ? (
                         <div className="space-y-1">
-                          {project.recentActivity.slice(0, 2).map((activity, index) => (
-                            <div key={index} className="text-xs text-gray-500">
-                              <span className="font-medium">{activity.user}</span> {activity.action}
-                              <span className="text-gray-400 ml-1">• {activity.time}</span>
-                            </div>
-                          ))}
+                          {project.recentActivity.slice(0, 2).map((activity, index) => {
+                            // Ensure all activity properties are strings
+                            const user = typeof activity.user === 'string' ? activity.user : 'Unknown';
+                            const action = typeof activity.action === 'string' ? activity.action : 'Unknown action';
+                            const time = typeof activity.time === 'string' ? activity.time : 'Unknown time';
+                            
+                            return (
+                              <div key={index} className="text-xs text-gray-500">
+                                <span className="font-medium">{user}</span> {action}
+                                <span className="text-gray-400 ml-1">• {time}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-xs text-gray-400">No recent activity</div>
@@ -725,18 +781,18 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
 
                     {/* Project Info */}
                     <div className="flex justify-between text-xs text-gray-500 pt-2 border-t">
-                      <span>Created: {project.createdDate ? new Date(project.createdDate).toLocaleDateString() : "Unknown"}</span>
+                      <span>Created: {projectCreatedDate}</span>
                       {project.deadline && (
                         <span
                           className={
-                            isDeadlineOverdue(project.deadline) && project.status !== "Completed"
+                            isDeadlineOverdue(project.deadline) && projectStatus !== "Completed"
                               ? "text-red-600 font-medium"
-                              : (isDeadlineNear(project.deadline) && project.status !== "Completed"
+                              : (isDeadlineNear(project.deadline) && projectStatus !== "Completed"
                                 ? "text-orange-600 font-medium"
                                 : "")
                           }
                         >
-                          Due: {project.deadline ? new Date(project.deadline).toLocaleDateString() : "No deadline"}
+                          Due: {projectDeadline}
                         </span>
                       )}
                     </div>

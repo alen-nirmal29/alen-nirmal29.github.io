@@ -7,6 +7,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
     avatar_url = serializers.SerializerMethodField()
     website = serializers.CharField(required=False, allow_blank=True)
+    avatar = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
         model = UserProfile
@@ -14,9 +15,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'email', 'avatar_url', 'avatar',
             'phone', 'job_title', 'company', 'bio', 'location', 'website', 'timezone'
         ]
-        extra_kwargs = {
-            'avatar': {'write_only': True, 'required': False},
-        }
 
     def validate_website(self, value):
         """

@@ -38,20 +38,24 @@ class UserProfileDetailView(generics.RetrieveUpdateAPIView):
     def partial_update(self, request, *args, **kwargs):
         logger.info(f"User {request.user} is updating their profile.")
         logger.debug(f"Incoming data: {request.data}")
+        logger.debug(f"Files received: {request.FILES}")
         
         instance = self.get_object()
         
         # Handle file upload separately
         avatar_file = request.FILES.get('avatar')
         if avatar_file:
-            logger.debug(f"Avatar file received: {avatar_file.name}")
+            logger.debug(f"Avatar file received: {avatar_file.name}, size: {avatar_file.size}")
             # The serializer will handle the file saving
+        else:
+            logger.debug("No avatar file received")
         
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
             try:
                 self.perform_update(serializer)
                 logger.info(f"Profile for user {request.user} updated successfully.")
+                logger.debug(f"Updated profile data: {serializer.data}")
                 return Response(serializer.data, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.error(f"Error updating profile: {e}", exc_info=True)

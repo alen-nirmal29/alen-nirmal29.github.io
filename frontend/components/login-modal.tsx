@@ -31,31 +31,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     }
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: email.trim(),
-          password: password,
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        alert(data.error || "Login failed. Please try again.");
-        return;
-      }
-      
-      // Store user data and tokens
-      if (data.user && data.tokens) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("authToken", data.tokens.access);
-        localStorage.setItem("refreshToken", data.tokens.refresh);
-      }
-      
-      // Redirect to dashboard
+      const result = await auth.login({ email: email.trim(), password });
+      login(result.user);
+      onClose();
       window.location.href = "/dashboard";
     } catch (err) {
       console.error("Login error:", err);
@@ -160,7 +138,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
               <GoogleAuthButton
                 mode="login"
-                onSuccess={() => {
+                onSuccess={(userData) => {
+                  login(userData);
                   onClose();
                   window.location.href = "/dashboard";
                 }}

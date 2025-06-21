@@ -6,23 +6,63 @@ from users.models import Member
 from .models import UserProfile
 from .serializers import UserProfileSerializer
 from rest_framework.exceptions import NotAuthenticated
+import logging
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+logger = logging.getLogger(__name__)
 
 class UserProfileDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
+        logger.debug(f"Request user: {self.request.user}")
+        logger.debug(f"Request user is authenticated: {self.request.user.is_authenticated}")
+        logger.debug(f"Request headers: {dict(self.request.headers)}")
+        
         user = self.request.user
-        if user:
-            profile, created = UserProfile.objects.get_or_create(user=user, defaults={
-                'email': user.email or '',
-                'first_name': user.name.split()[0] if user.name else '',
-                'last_name': ' '.join(user.name.split()[1:]) if user.name and len(user.name.split()) > 1 else '',
-                'avatar': user.picture or '',
-            })
-            return profile
+        if not hasattr(user, 'profile'):
+            profile, created = UserProfile.objects.get_or_create(user=user)
         else:
-            raise NotAuthenticated("Authentication credentials were not provided or are invalid.")
+            profile = user.profile
+        
+        logger.debug(f"Profile retrieved/created for user: {user.email}")
+        return profile
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def partial_update(self, request, *args, **kwargs):
+        logger.info(f"User {request.user} is updating their profile.")
+        logger.debug(f"Incoming data: {request.data}")
+        
+        instance = self.get_object()
+        
+        # Handle file upload separately
+        avatar_file = request.FILES.get('avatar')
+        if avatar_file:
+            logger.debug(f"Avatar file received: {avatar_file.name}")
+            # The serializer will handle the file saving
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        if serializer.is_valid():
+            try:
+                self.perform_update(serializer)
+                logger.info(f"Profile for user {request.user} updated successfully.")
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Error updating profile: {e}", exc_info=True)
+                return Response({"error": "Failed to update profile."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            logger.error(f"Profile update validation failed: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, *args, **kwargs):
+        # ... (get method logic)
+        return super().get(request, *args, **kwargs)
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])

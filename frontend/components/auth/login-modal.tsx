@@ -7,6 +7,9 @@ import { X, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { GoogleAuthButton } from "./google-auth"
+import { auth } from "@/lib/auth"
+import { useAuth } from "./auth-context"
+import { useRouter } from "next/navigation"
 
 interface LoginModalProps {
   onClose: (e?: React.MouseEvent) => void
@@ -14,23 +17,46 @@ interface LoginModalProps {
 
 export function LoginModal({ onClose }: LoginModalProps) {
   const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
+  const { login } = useAuth()
+  const router = useRouter()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
     }))
+    // Clear error when user starts typing
+    if (error) setError("")
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    // Handle login logic here
-    console.log("Login attempt:", formData)
+    
+    setIsLoading(true)
+    setError("")
+
+    try {
+      const result = await auth.login(formData)
+      login(result.user)
+      router.push("/dashboard")
+    } catch (error: any) {
+      console.error("Login error:", error)
+      setError(error.message || "Login failed. Please check your credentials.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSuccess = (userData: any) => {
+    login(userData)
+    router.push("/dashboard")
   }
 
   return (
@@ -59,6 +85,13 @@ export function LoginModal({ onClose }: LoginModalProps) {
           {/* Title */}
           <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">Log in</h2>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -73,6 +106,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -89,11 +123,13 @@ export function LoginModal({ onClose }: LoginModalProps) {
                   onChange={(e) => handleInputChange("password", e.target.value)}
                   className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -103,8 +139,9 @@ export function LoginModal({ onClose }: LoginModalProps) {
             <Button
               type="submit"
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200"
+              disabled={isLoading}
             >
-              Continue
+              {isLoading ? "Signing in..." : "Continue"}
             </Button>
           </form>
 
@@ -121,13 +158,10 @@ export function LoginModal({ onClose }: LoginModalProps) {
             <div className="mt-6 flex justify-center gap-4">
               <GoogleAuthButton
                 mode="login"
-                onSuccess={() => {
-                  console.log("Google login successful")
-                  onClose()
-                }}
+                onSuccess={handleGoogleSuccess}
                 onError={(error) => {
                   console.error("Google login error:", error)
-                  // You could show an error message here
+                  setError("Google login failed. Please try again.")
                 }}
               />
             </div>

@@ -12,6 +12,9 @@ export default async function handler(req, res) {
   // Get the token from the request headers
   const token = req.headers.authorization;
   
+  console.log('Profile API called with method:', method);
+  console.log('Authorization header:', token);
+  
   // Set the Django API URL with fallback
   const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
   
@@ -20,6 +23,7 @@ export default async function handler(req, res) {
     
     if (method === 'GET') {
       // Fetch profile data
+      console.log('Making GET request to Django...');
       response = await fetch(`${DJANGO_API_URL}/api/user-settings/profile/`, {
         method: 'GET',
         headers: {
@@ -27,6 +31,7 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json',
         },
       });
+      console.log('Django response status:', response.status);
     } else if (method === 'PATCH') {
       // Update profile data
       // Detect if request is multipart/form-data
@@ -64,8 +69,10 @@ export default async function handler(req, res) {
     }
     
     const data = await response.json();
+    console.log('Django response data:', data);
     
     if (!response.ok) {
+      console.log('Django request failed with status:', response.status);
       return res.status(response.status).json(data);
     }
     

@@ -8,7 +8,7 @@ import { signInWithGoogle } from "@/lib/firebase"
 
 interface GoogleAuthButtonProps {
   mode: 'signup' | 'login'
-  onSuccess?: () => void
+  onSuccess?: (userData: any) => void
   onError?: (error: string) => void
 }
 
@@ -48,13 +48,16 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       const data = await response.json()
 
       if (data.user && data.tokens) {
-        // Store tokens and user data
+        // Store tokens and user data using auth library
         auth.setTokens(data.tokens)
         auth.setUser(data.user)
+        localStorage.setItem('isAuthenticated', 'true')
+        
+        // Update auth context
         login(data.user)
         
-        onSuccess?.()
-        window.location.href = "/dashboard"
+        // Call the success callback with user data
+        onSuccess?.(data.user)
       } else {
         throw new Error('Invalid response from server')
       }

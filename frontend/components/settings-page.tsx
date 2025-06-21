@@ -87,7 +87,20 @@ export function SettingsPage() {
           method: "GET"
         })
         const data = await res.json()
-        setProfileData(data)
+        // Ensure all fields have string values to prevent controlled/uncontrolled input errors
+        setProfileData({
+          first_name: data.first_name || "",
+          last_name: data.last_name || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          job_title: data.job_title || "",
+          company: data.company || "",
+          bio: data.bio || "",
+          location: data.location || "",
+          website: data.website || "",
+          timezone: data.timezone || "",
+          avatar: data.avatar || "",
+        })
       } catch (error) {
         console.error("Failed to fetch profile:", error)
       } finally {
@@ -109,24 +122,57 @@ export function SettingsPage() {
 
   const handleSave = async () => {
     try {
+      const formData = new FormData();
+
+      // Append all profile data fields to formData, except the avatar
+      Object.entries(profileData).forEach(([key, value]) => {
+        if (key !== 'avatar' && value !== null && value !== undefined) {
+          formData.append(key, value as string);
+        }
+      });
+      
+      // If there's a new avatar file, append it
+      if (avatarFile) {
+        formData.append('avatar', avatarFile);
+      }
+
       const res = await apiRequest("/api/user-settings/profile/", {
         method: "PATCH",
-        body: JSON.stringify(profileData)
-      })
-      const updatedProfile = await res.json()
-      setProfileData(updatedProfile)
+        body: formData,
+      });
+
+      const updatedProfile = await res.json();
+      
+      // Update local state, ensuring avatar URL is correctly handled
+      setProfileData({
+        first_name: updatedProfile.first_name || "",
+        last_name: updatedProfile.last_name || "",
+        email: updatedProfile.email || "",
+        phone: updatedProfile.phone || "",
+        job_title: updatedProfile.job_title || "",
+        company: updatedProfile.company || "",
+        bio: updatedProfile.bio || "",
+        location: updatedProfile.location || "",
+        website: updatedProfile.website || "",
+        timezone: updatedProfile.timezone || "",
+        avatar: updatedProfile.avatar || profileData.avatar || "",
+      });
+
+      // Clear the avatar file state after successful upload
+      setAvatarFile(null);
+
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
-      })
+      });
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleDeleteAccount = async () => {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) {

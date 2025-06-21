@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "./auth-context"
 
 interface ProtectedRouteProps {
@@ -12,12 +13,21 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, redirectTo = "/login" }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
+    console.log('ProtectedRoute: isAuthenticated =', isAuthenticated, 'isLoading =', isLoading);
+    
     if (!isLoading && !isAuthenticated) {
-      window.location.href = redirectTo
+      console.log('ProtectedRoute: Redirecting to', redirectTo);
+      // Add a small delay to prevent race conditions
+      const timer = setTimeout(() => {
+        router.push(redirectTo)
+      }, 100)
+      
+      return () => clearTimeout(timer)
     }
-  }, [isAuthenticated, isLoading, redirectTo])
+  }, [isAuthenticated, isLoading, redirectTo, router])
 
   if (isLoading) {
     return (

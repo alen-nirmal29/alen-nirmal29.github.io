@@ -13,7 +13,7 @@ export const auth = {
     if (typeof window === 'undefined') return null;
     const access = localStorage.getItem('authToken');
     const refresh = localStorage.getItem('refreshToken');
-    console.log('Getting tokens from storage:', { access: access ? 'present' : 'missing', refresh: refresh ? 'present' : 'missing' });
+    console.log('AuthLib: getTokens() called. Access token found:', !!access, 'Refresh token found:', !!refresh);
     if (access && refresh) {
       return { access, refresh };
     }
@@ -130,8 +130,11 @@ export const auth = {
   getAuthHeader(): { Authorization: string } | {} {
     const tokens = this.getTokens();
     if (tokens?.access) {
-      return { Authorization: `Bearer ${tokens.access}` };
+      const authHeader = { Authorization: `Bearer ${tokens.access}` };
+      console.log('AuthLib: Created auth header:', authHeader);
+      return authHeader;
     }
+    console.log('AuthLib: Could not create auth header, no access token found.');
     return {};
   },
 
@@ -175,28 +178,33 @@ export const auth = {
 
 // API request wrapper with automatic token handling
 export async function apiRequest(url: string, options: RequestInit = {}): Promise<Response> {
+  // Get the auth token.
   const authHeader = auth.getAuthHeader();
-  
-  const headers: HeadersInit = {
-    ...authHeader,
-    ...options.headers,
-  };
 
-  // Let the browser set the Content-Type for FormData requests
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
+  // Create a new Headers object.
+  const headers = new Headers(options.headers);
+
+  // Set the Authorization header if a token exists.
+  if ('Authorization' in authHeader) {
+    headers.set('Authorization', (authHeader as { Authorization: string }).Authorization);
   }
-  
+
+  // Set Content-Type for JSON, but don't override it if it's already set 
+  // (e.g., for file uploads).
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const config: RequestInit = {
     ...options,
     headers,
   };
 
-  console.log('Making API request:', url, 'with headers:', headers);
+  console.log(`Making API request to ${url} with method ${config.method || 'GET'}`);
 
   let response = await fetch(url, config);
 
-  console.log('Response status:', response.status);
+  console.log(`Response from ${url}: ${response.status}`);
 
   // If unauthorized, try to refresh token and retry once
   if (response.status === 401) {

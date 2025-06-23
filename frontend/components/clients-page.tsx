@@ -106,41 +106,13 @@ export function ClientsPage() {
   }
 
   const handleSaveClient = async (client: Client) => {
-    // If editing
+    // The modal now handles all API calls, so we just need to update the local state
     if (client.id) {
-      try {
-        const res = await apiRequest(`${API_BASE}/projects/clients/${client.id}/`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: client.name }),
-        });
-        if (res.ok) {
-          const updatedClient = await res.json();
-          setClients((prev) => prev.map((c) => (c.id === updatedClient.id ? updatedClient : c)));
-        } else {
-          const errorBody = await res.text();
-          console.error('Failed to update client', res.status, errorBody);
-        }
-      } catch (err) {
-        console.error('Error updating client:', err);
-      }
+      // Update existing client in the list
+      setClients((prev) => prev.map((c) => (c.id === client.id ? client : c)));
     } else {
-      // Add new client
-      try {
-        const res = await apiRequest(`${API_BASE}/projects/clients/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: client.name }),
-        });
-        if (res.ok) {
-          const newClient = await res.json();
-          setClients((prev) => [...prev, newClient]);
-        } else {
-          console.error('Failed to add client');
-        }
-      } catch (err) {
-        console.error('Error adding client:', err);
-      }
+      // Add new client to the list
+      setClients((prev) => [...prev, client]);
     }
   }
 
@@ -149,9 +121,11 @@ export function ClientsPage() {
     <>
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-800">Clients</h1>
-          <Button onClick={handleAddClient} className="bg-blue-500 hover:bg-blue-600 text-white px-6">
+        <div className="flex flex-row items-center justify-between w-full">
+          <div className="flex flex-col items-center text-center flex-1">
+            <h1 className="text-2xl font-semibold text-gray-800">Clients</h1>
+          </div>
+          <Button onClick={handleAddClient} className="bg-blue-500 hover:bg-blue-600 text-white px-6 ml-4">
             Add new Client
           </Button>
         </div>
@@ -159,26 +133,27 @@ export function ClientsPage() {
 
       {/* Filters */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center space-x-4">
-          <Select value={showActive} onValueChange={setShowActive}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Show active</SelectItem>
-              <SelectItem value="all">Show all</SelectItem>
-              <SelectItem value="archived">Show archived</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search by name"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col items-center text-center w-full space-y-2">
+          <div className="flex items-center justify-center space-x-4 w-full">
+            <Select value={showActive} onValueChange={setShowActive}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Show active</SelectItem>
+                <SelectItem value="all">Show all</SelectItem>
+                <SelectItem value="archived">Show archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search by name"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
         </div>
       </div>

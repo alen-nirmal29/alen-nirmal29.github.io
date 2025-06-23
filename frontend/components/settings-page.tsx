@@ -221,12 +221,12 @@ export function SettingsPage() {
     <>
       {/* Header */}
       <header className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-row items-center justify-between w-full">
+          <div className="flex flex-col items-center text-center flex-1">
             <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
             <p className="text-gray-600">Manage your account preferences and application settings</p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 ml-4">
             <Button variant="outline" className="text-gray-600">
               <X className="h-4 w-4 mr-2" />
               Cancel
@@ -243,7 +243,7 @@ export function SettingsPage() {
 
       {/* Settings Content */}
       <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-[90%] mx-auto">
           <Tabs value="profile" className="space-y-6">
             <TabsContent value="profile">
               <Card className="bg-white/90 backdrop-blur-sm">

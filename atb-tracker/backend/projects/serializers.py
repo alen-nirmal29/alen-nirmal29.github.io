@@ -4,7 +4,8 @@ from .models import Project, Client, Task, TimeEntry, Tag
 class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'email', 'address', 'note', 'currency', 'user']
+        read_only_fields = ['user']
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,7 +31,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'client', 'client_name', 'status', 'progress', 'tags']
+        fields = ['id', 'name', 'client', 'client_name', 'status', 'progress', 'tags', 'updated_at']
 
     def create(self, validated_data):
         client_name = validated_data.pop('client_name', None)

@@ -210,9 +210,15 @@ export function ReportsPage() {
   const pomodoroTrendsData = getPomodoroTrends(pomodoroSessions, timePeriod)
 
   // Task Completion Analysis: tasks = completed projects, hours = total hours worked per period
-  function getTaskCompletionData(entries: any[], completedProjects: number | null, period: "daily" | "weekly" | "monthly") {
+  function getTaskCompletionData(
+    timeEntries: any[],
+    completedProjects: any[],
+    period: "daily" | "weekly" | "monthly"
+  ) {
     const groups: Record<string, { tasks: number; hours: number; key: string }> = {}
-    entries.forEach(entry => {
+
+    // First, process time entries to get hours per period
+    timeEntries.forEach(entry => {
       const date = new Date(entry.date)
       let key = ""
       if (period === "daily") {
@@ -223,47 +229,65 @@ export function ReportsPage() {
         const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
         key = `${date.getFullYear()}-W${week}`
       } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${date.getMonth() + 1}`
+        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
       }
-      if (!groups[key]) groups[key] = { tasks: 0, hours: 0, key }
+
+      if (!groups[key]) {
+        groups[key] = { tasks: 0, hours: 0, key }
+      }
       groups[key].hours += entry.duration / 60
     })
-    // Assign completed projects to the latest period (or spread if possible)
-    if (completedProjects && Object.keys(groups).length > 0) {
-      // Assign all completed projects to the latest period
-      const latestKey = Object.keys(groups).sort().reverse()[0]
-      groups[latestKey].tasks = completedProjects
-    }
-    return Object.values(groups)
+
+    // Next, process completed projects
+    completedProjects.forEach(project => {
+      // When a project is marked 'Completed', its 'updated_at' timestamp reflects the completion time.
+      const completionDateStr = project.updated_at
+      if (!completionDateStr) return
+
+      const date = new Date(completionDateStr)
+      let key = ""
+      if (period === "daily") {
+        key = date.toISOString().split("T")[0]
+      } else if (period === "weekly") {
+        const firstDay = new Date(date.getFullYear(), 0, 1)
+        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
+        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
+        key = `${date.getFullYear()}-W${week}`
+      } else if (period === "monthly") {
+        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
+      }
+
+      if (groups[key]) {
+        groups[key].tasks += 1
+      } else {
+        // This case handles completed projects in periods with no tracked time.
+        groups[key] = { tasks: 1, hours: 0, key }
+      }
+    })
+
+    return Object.values(groups).sort((a, b) => a.key.localeCompare(b.key))
   }
-  const taskCompletionData = getTaskCompletionData(timeEntries, completedProjects, timePeriod)
+  const completedProjectsList = projects.filter(p => p.status?.toLowerCase() === "completed")
+  const taskCompletionData = getTaskCompletionData(timeEntries, completedProjectsList, timePeriod)
 
   return (
     <>
-      {/* Top Header */}
-      <header className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
+      {/* Centered Header and Controls */}
+      <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4 flex flex-col items-center text-center space-y-2">
             <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
             <p className="text-gray-600">Track your productivity and analyze your work patterns</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Time Period Filter */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-center space-x-4 mt-2">
           <span className="text-gray-700 font-medium">View by:</span>
-          {["daily", "weekly", "monthly"].map((period) => (
+          {['daily', 'weekly', 'monthly'].map((period) => (
             <Button
               key={period}
-              variant={timePeriod === period ? "default" : "outline"}
+              variant={timePeriod === period ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTimePeriod(period as "daily" | "weekly" | "monthly")}
+              onClick={() => setTimePeriod(period as 'daily' | 'weekly' | 'monthly')}
               className={
                 timePeriod === period
-                  ? "bg-purple-600 hover:bg-purple-700"
-                  : "text-purple-600 border-purple-600 hover:bg-purple-50"
+                  ? 'bg-purple-600 hover:bg-purple-700'
+                  : 'text-purple-600 border-purple-600 hover:bg-purple-50'
               }
             >
               {period.charAt(0).toUpperCase() + period.slice(1)}
@@ -484,7 +508,7 @@ export function ReportsPage() {
                 {taskCompletionData.length === 0 ? (
                   <div className="text-center text-gray-500 py-12">No task completion data yet, matey!</div>
                 ) : (
-                  <div style={{ width: '100%', height: '300px' }}>
+                  <div style={{ width: '100%', height: '300px', background: '#fff' }}>
                     <ChartContainer config={chartConfig} className="h-[300px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart 
@@ -493,63 +517,38 @@ export function ReportsPage() {
                         >
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
-                            dataKey={timePeriod === "monthly" ? "week" : timePeriod === "weekly" ? "week" : "key"} 
+                            dataKey="key" 
                             label={{ value: "Period", position: "insideBottom", offset: -5 }} 
                           />
                           <YAxis 
                             yAxisId="left" 
-                            label={{ value: "Tasks Completed", angle: -90, position: "insideLeft" }} 
+                            label={{ value: "Projects Completed", angle: -90, position: "insideLeft" }} 
                           />
                           <YAxis 
                             yAxisId="right" 
                             orientation="right" 
                             label={{ value: "Hours Worked", angle: 90, position: "insideRight" }} 
                           />
-                          <Legend 
-                            verticalAlign="bottom" 
-                            wrapperStyle={{ paddingTop: 16 }} 
-                            iconType="circle" 
-                          />
                           <ChartTooltip 
-                            content={({ active, payload }) => {
+                            cursor={{ fill: "hsl(var(--muted))" }}
+                            content={({ active, payload, label }) => {
                               if (active && payload && payload.length) {
+                                const tasksPayload = payload.find(p => p.dataKey === 'tasks');
+                                const hoursPayload = payload.find(p => p.dataKey === 'hours');
                                 return (
-                                  <div style={{ 
-                                    background: "#fff", 
-                                    border: "1px solid #eee", 
-                                    borderRadius: 8, 
-                                    padding: 12, 
-                                    boxShadow: "0 2px 8px #0001" 
-                                  }}>
-                                    <div><strong>Period:</strong> {payload[0].payload.key}</div>
-                                    <div style={{ color: "#10b981" }}>
-                                      <strong>Tasks:</strong> {payload[0].payload.tasks}
-                                    </div>
-                                    <div style={{ color: "#8b5cf6" }}>
-                                      <strong>Hours:</strong> {payload[0].payload.hours.toFixed(1)}
-                                    </div>
+                                  <div className="bg-background p-2 border rounded-md shadow-lg text-sm">
+                                    <p className="font-bold mb-1">{`Period: ${label}`}</p>
+                                    {tasksPayload && <p style={{ color: tasksPayload.fill }}>{`Projects: ${tasksPayload.value}`}</p>}
+                                    {hoursPayload && <p style={{ color: hoursPayload.fill }}>{`Hours: ${(typeof hoursPayload.value === 'number' ? hoursPayload.value : 0).toFixed(1)}`}</p>}
                                   </div>
                                 )
                               }
                               return null
                             }} 
                           />
-                          <Bar 
-                            yAxisId="left" 
-                            dataKey="tasks" 
-                            fill="#10b981" 
-                            radius={[4, 4, 0, 0]} 
-                            name="Tasks Completed" 
-                          />
-                          <Line 
-                            yAxisId="right" 
-                            type="monotone" 
-                            dataKey="hours" 
-                            stroke="#8b5cf6" 
-                            strokeWidth={3} 
-                            dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 6 }} 
-                            name="Hours Worked" 
-                          />
+                          <Legend />
+                          <Bar yAxisId="left" dataKey="tasks" fill="#00BCD4" name="Projects Completed" radius={[4, 4, 0, 0]} barSize={60} />
+                          <Line yAxisId="right" type="monotone" dataKey="hours" stroke="#8884d8" name="Hours Worked" strokeWidth={2} />
                         </BarChart>
                       </ResponsiveContainer>
                     </ChartContainer>

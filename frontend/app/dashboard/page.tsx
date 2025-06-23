@@ -77,7 +77,7 @@ declare global {
 interface Project {
   id: string | number;
   name: string;
-  client?: string;
+  client?: string | { name: string; [key: string]: any };
   description?: string;
   status?: string;
   progress?: number;
@@ -763,7 +763,6 @@ useEffect(() => {
   const sidebarItems = [
     { icon: Timer, label: "TIME TRACKER", active: activePage === "TIME TRACKER" },
     { icon: Calendar, label: "CALENDAR", active: activePage === "CALENDAR" },
-    { icon: BarChart3, label: "DASHBOARD" },
     { icon: BarChart3, label: "REPORTS", hasSubmenu: true, active: activePage === "REPORTS" },
     { icon: FolderOpen, label: "PROJECTS", active: activePage === "PROJECTS" },
     { icon: UserCheck, label: "CLIENTS", active: activePage === "CLIENTS" },
@@ -854,7 +853,7 @@ useEffect(() => {
       default:
         return (
           <div className="flex-1 p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="w-[90%] mx-auto space-y-6">
               {/* Today's Overview */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card className="bg-white">
@@ -983,7 +982,6 @@ useEffect(() => {
                           >
                             <FolderOpen className="h-5 w-5" />
                             <span>{selectedProject || "Project"}</span>
-                            <ChevronDown className="h-4 w-4" />
                           </Button>
 
                           {showProjectDropdown && (
@@ -1005,7 +1003,7 @@ useEffect(() => {
                                   projects.map((project) => {
                                     // Ensure project name and client are strings
                                     const projectName = typeof project.name === 'string' ? project.name : 'Unnamed Project';
-                                    const projectClient = typeof project.client === 'string' ? project.client : 'No client';
+                                    const projectClient = typeof project.client === 'object' && project.client !== null ? project.client.name : 'No client';
                                     
                                     return (
                                     <button
@@ -1236,10 +1234,33 @@ useEffect(() => {
     }
   }
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-400 via-purple-300 to-blue-400 flex">
+      {/* Sidebar Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen((open) => !open)}
+        className="fixed top-4 left-4 z-50 bg-white/90 border border-gray-200 rounded-full shadow-md p-2 transition-colors hover:bg-purple-100 focus:outline-none"
+        style={{ display: sidebarOpen ? 'none' : 'block' }}
+        aria-label="Open sidebar"
+      >
+        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-menu"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+      </button>
       {/* Sidebar */}
-      <div className="w-64 bg-white/90 backdrop-blur-sm border-r border-white/20 flex flex-col">
+      <div
+        className={`fixed top-0 left-0 h-full z-40 transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} w-64 bg-white/90 backdrop-blur-sm border-r border-white/20 flex flex-col`}
+        style={{ boxShadow: sidebarOpen ? '2px 0 8px rgba(0,0,0,0.04)' : 'none' }}
+      >
+        {/* Close Button */}
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="absolute top-4 right-[-40px] z-50 bg-white/90 border border-gray-200 rounded-full shadow-md p-2 transition-colors hover:bg-purple-100 focus:outline-none"
+          aria-label="Close sidebar"
+          style={{ display: sidebarOpen ? 'block' : 'none' }}
+        >
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
         {/* Logo */}
         <div className="p-4 border-b border-white/20">
           <div className="flex items-center space-x-2">
@@ -1250,7 +1271,6 @@ useEffect(() => {
             </div>
           </div>
         </div>
-
         {/* Navigation */}
         <nav className="flex-1 p-4">
           <div className="space-y-1">
@@ -1266,7 +1286,6 @@ useEffect(() => {
                 >
                   <item.icon className="h-5 w-5" />
                   <span className="text-sm font-medium">{item.label}</span>
-                  {item.hasSubmenu && <ChevronDown className="h-4 w-4 ml-auto" />}
                 </button>
                 {index === 2 && (
                   <div className="mt-4 mb-2">
@@ -1278,16 +1297,132 @@ useEffect(() => {
                     <div className="text-xs font-semibold text-purple-500 uppercase tracking-wider px-3">MANAGE</div>
                   </div>
                 )}
-                {index === 6 && (
-                  <div className="mt-4 mb-2">
-                    <div className="text-xs font-semibold text-purple-500 uppercase tracking-wider px-3">TEAM</div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </nav>
-
+        {/* Notification and Profile Icons at Bottom */}
+        <div className="flex flex-col items-start space-y-4 p-4 border-t border-white/20">
+          {/* Notifications Dropdown */}
+          <div className="relative flex items-center space-x-2">
+            <button onClick={() => setShowNotifications(!showNotifications)} className="relative cursor-pointer">
+              <div
+                className={`w-10 h-10 ${notifications.filter((n) => !n.read).length > 0 ? "bg-orange-500" : "bg-gray-400"} rounded-full flex items-center justify-center`}
+              >
+                <span className="text-white text-base font-bold">
+                  {notifications.filter((n) => !n.read).length || "0"}
+                </span>
+              </div>
+            </button>
+            <span className="text-gray-600 text-sm font-medium">Notifications</span>
+            {showNotifications && (
+              <div className="absolute left-0 bottom-12 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500">
+                      <Bell className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                      <p>No notifications yet</p>
+                      <p className="text-sm text-gray-400 mt-1">We'll notify you about deadlines and reminders</p>
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 ${!notification.read ? "bg-blue-50" : ""}`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div
+                            className={`w-2 h-2 rounded-full mt-2 ${
+                              notification.type === "deadline"
+                                ? "bg-red-500"
+                                : notification.type === "task"
+                                  ? "bg-orange-500"
+                                  : "bg-blue-500"
+                            }`}
+                          ></div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-gray-800">{notification.title}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                            <p className="text-xs text-gray-400 mt-2">
+                              {notification.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="p-3 border-t border-gray-200">
+                    <button
+                      onClick={() => setNotifications([])}
+                      className="text-sm text-purple-600 hover:text-purple-700"
+                    >
+                      Mark all as read
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {/* Profile Dropdown */}
+          <div className="relative flex items-center space-x-2 mt-2">
+            <button
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className="w-10 h-10 bg-gradient-to-r from-purple-800 to-blue-800 rounded-full flex items-center justify-center cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors"
+            >
+              <span className="text-white text-base font-bold">{profileData.initials}</span>
+            </button>
+            <span className="text-gray-600 text-sm font-medium">Profile</span>
+            {showProfileDropdown && (
+              <div className="absolute left-0 bottom-12 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+                style={{ pointerEvents: 'auto', zIndex: 9999 }}
+              >
+                <div className="p-4">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold">{profileData.initials}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800">{profileData.name}</h3>
+                      <p className="text-sm text-gray-600">{profileData.email}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Today's Time:</span>
+                      <span className="font-medium">
+                        {todayTotal > 0 ? formatDuration(todayTotal + timeElapsed) : "0h 0m"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">This Week:</span>
+                      <span className="font-medium">
+                        {weekTotal > 0 ? formatDuration(weekTotal + timeElapsed) : "0h 0m"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Total Sessions:</span>
+                      <span className="font-medium">{timeEntries.length}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center mt-1"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
         {/* Logout Link */}
         <div className="p-4 border-t border-white/20">
           <NavigationLink
@@ -1300,179 +1435,9 @@ useEffect(() => {
           </NavigationLink>
         </div>
       </div>
-
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Purple Navigation Bar with Icons */}
-        <nav className="bg-gradient-to-r from-purple-500 to-purple-600 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              {navItems.map((item) => (
-                <button
-                  key={item}
-                  onClick={() => {
-                    setActiveNavItem(item)
-                    if (item === "Clients") {
-                      setActivePage("CLIENTS")
-                    } else if (item === "Home") {
-                      setActivePage("TIME TRACKER")
-                    } else if (item === "Teams") {
-                      setActivePage("TEAM")
-                    } else if (item === "Reports") {
-                      setActivePage("REPORTS")
-                    } else if (item === "Projects") {
-                      setActivePage("PROJECTS")
-                    } else if (item === "Settings") {
-                      setActivePage("SETTINGS")
-                    }
-                  }}
-                  className={`text-white font-medium transition-colors hover:text-purple-100 ${
-                    activeNavItem === item ? "border-b-2 border-white pb-1" : ""
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-
-            {/* Icons moved to navigation bar */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setActivePage("SETTINGS")}
-                className="text-white cursor-pointer hover:text-purple-100 transition-colors"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-
-              {/* Notifications Dropdown */}
-              <div className="relative">
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative cursor-pointer">
-                  <div
-                    className={`w-6 h-6 ${notifications.filter((n) => !n.read).length > 0 ? "bg-orange-500" : "bg-gray-400"} rounded-full flex items-center justify-center`}
-                  >
-                    <span className="text-white text-xs font-bold">
-                      {notifications.filter((n) => !n.read).length || "0"}
-                    </span>
-                  </div>
-                </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="p-4 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-800">Notifications</h3>
-                    </div>
-                    <div className="max-h-96 overflow-y-auto">
-                      {notifications.length === 0 ? (
-                        <div className="p-6 text-center text-gray-500">
-                          <Bell className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                          <p>No notifications yet</p>
-                          <p className="text-sm text-gray-400 mt-1">We'll notify you about deadlines and reminders</p>
-                        </div>
-                      ) : (
-                        notifications.map((notification) => (
-                          <div
-                            key={notification.id}
-                            className={`p-4 border-b border-gray-100 hover:bg-gray-50 ${!notification.read ? "bg-blue-50" : ""}`}
-                          >
-                            <div className="flex items-start space-x-3">
-                              <div
-                                className={`w-2 h-2 rounded-full mt-2 ${
-                                  notification.type === "deadline"
-                                    ? "bg-red-500"
-                                    : notification.type === "task"
-                                      ? "bg-orange-500"
-                                      : "bg-blue-500"
-                                }`}
-                              ></div>
-                              <div className="flex-1">
-                                <h4 className="text-sm font-medium text-gray-800">{notification.title}</h4>
-                                <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
-                                <p className="text-xs text-gray-400 mt-2">
-                                  {notification.timestamp.toLocaleTimeString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {notifications.length > 0 && (
-                      <div className="p-3 border-t border-gray-200">
-                        <button
-                          onClick={() => setNotifications([])}
-                          className="text-sm text-purple-600 hover:text-purple-700"
-                        >
-                          Mark all as read
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Profile Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="w-8 h-8 bg-gradient-to-r from-purple-800 to-blue-800 rounded-full flex items-center justify-center cursor-pointer border-2 border-white/20 hover:border-white/40 transition-colors"
-                >
-                  <span className="text-white text-sm font-bold">{profileData.initials}</span>
-                </button>
-
-                {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
-                    style={{ pointerEvents: 'auto', zIndex: 9999 }}
-                  >
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-bold">{profileData.initials}</span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-800">{profileData.name}</h3>
-                          <p className="text-sm text-gray-600">{profileData.email}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Today's Time:</span>
-                          <span className="font-medium">
-                            {todayTotal > 0 ? formatDuration(todayTotal + timeElapsed) : "0h 0m"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">This Week:</span>
-                          <span className="font-medium">
-                            {weekTotal > 0 ? formatDuration(weekTotal + timeElapsed) : "0h 0m"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Total Sessions:</span>
-                          <span className="font-medium">{timeEntries.length}</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          console.log('Rendering Sign Out button');
-                          console.log('Sign Out button clicked');
-                          logout();
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center mt-1"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Main Dashboard Content */}
+        {/* Removed the top navbar completely */}
         {renderMainContent()}
       </div>
     </div>

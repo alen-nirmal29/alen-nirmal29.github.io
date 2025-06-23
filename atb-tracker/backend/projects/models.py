@@ -18,6 +18,10 @@ class Tag(models.Model):
 class Client(models.Model):
     name = models.CharField(max_length=255)
     user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='clients')
+    email = models.EmailField(max_length=255, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+    currency = models.CharField(max_length=10, blank=True, null=True, default='USD')
 
     def __str__(self):
         return self.name
@@ -32,6 +36,8 @@ class Project(models.Model):
     progress = models.IntegerField(default=0)
     tags = models.ManyToManyField(Tag, blank=True, related_name='projects')
     user = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='projects')
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
 
     def __str__(self):
         return self.name

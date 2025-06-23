@@ -29,12 +29,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ProjectModal as EnhancedProjectModal } from "./enhanced-project-modal"
-import { Project } from "@/types/project";
+import { EnhancedProjectModal } from "./enhanced-project-modal"
+import { Project } from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 import { fetchProjects, createProject, updateProject } from "@/utils/projects-api"
 import { apiRequest } from "@/lib/auth"
 import React from "react"
+import { Client } from "@/types"
 
 // Add this function for backend delete
 async function deleteProjectFromBackend(projectId: number) {
@@ -90,27 +91,19 @@ const [filters, setFilters] = useState<Filters>({
 })
 
   // State to store user-created projects
-  const [projects, setProjects] = useState<Project[]>([]) // Always fetch from backend, never localStorage
+  const [projects, setProjects] = useState<Project[]>([])
+  const [clients, setClients] = useState<Client[]>([]) // State for client objects
   const [showTaskCreation, setShowTaskCreation] = useState(false)
   const [selectedProjectForTasks, setSelectedProjectForTasks] = useState<string>("")
 
   // New states for API integration
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Start with loading true
   const [error, setError] = useState<string | null>(null)
   const [newProjectName, setNewProjectName] = useState("")
   const [newProjectClient, setNewProjectClient] = useState("")
 
   // Dynamic data based on created projects
-  const clients = [
-    "All Clients",
-    ...Array.from(new Set(projects.map((p) => {
-      // Handle client object structure from backend
-      if (p.client && typeof p.client === 'object' && p.client.name) {
-        return p.client.name;
-      }
-      return p.client || "";
-    }))).filter((c) => c && c !== ""),
-  ];
+  const clientNames = ["All Clients", ...clients.map((c) => c.name)];
   
   const billableOptions = ["All", "Billable", "Non-Billable"];
   const templates = [
@@ -154,36 +147,38 @@ const [filters, setFilters] = useState<Filters>({
 
   // Fetch projects from API
   useEffect(() => {
-    setLoading(true)
-    fetchProjects()
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setProjects(
-            data.map((p) => ({
-              ...p,
-              recentActivity: Array.isArray(p.recentActivity) ? p.recentActivity : [],
-              name: p.name ?? "",
-              client: p.client ?? "",
-              description: p.description ?? "",
-              status: p.status ?? "Planning",
-              progress: typeof p.progress === "number" ? p.progress : 0,
-              billableRate: typeof p.billableRate === "number" ? p.billableRate : 0,
-              totalHours: typeof p.totalHours === "number" ? p.totalHours : 0,
-              billableHours: typeof p.billableHours === "number" ? p.billableHours : 0,
-              totalCost: typeof p.totalCost === "number" ? p.totalCost : 0,
-              template: p.template ?? "",
-              createdDate: p.createdDate ?? new Date().toISOString().split("T")[0],
-              deadline: p.deadline ?? "",
-              isBillable: typeof p.isBillable === "boolean" ? p.isBillable : false,
-            }))
-          )
+    async function loadData() {
+      try {
+        setLoading(true)
+        const projectsData = await fetchProjects();
+        const clientsData = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/clients/`).then(res => res.json());
+
+        if (Array.isArray(projectsData)) {
+          // Normalize projects data
+          const normalizedProjects = projectsData.map((p: any) => ({
+            ...p,
+            client: p.client?.name ?? p.client ?? "", // Flatten client object to name
+            createdDate: p.createdDate ?? new Date().toISOString().split("T")[0],
+          }));
+          setProjects(normalizedProjects)
         } else {
           setProjects([])
         }
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }, [loading])
+        
+        if(Array.isArray(clientsData)) {
+            setClients(clientsData);
+        } else {
+            setClients([]);
+        }
+
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, []) // Remove loading from dependency array to prevent re-fetch loops
 
   const handleCreate = async () => {
     setLoading(true)
@@ -279,25 +274,23 @@ const [filters, setFilters] = useState<Filters>({
   }
 
   const filteredProjects = projects.filter((project) => {
-    // Handle client object structure from backend
-    const projectClient = project.client && typeof project.client === 'object' && project.client.name 
-      ? project.client.name 
-      : project.client || "";
-    
-    const matchesSearch =
-      (project.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (projectClient.toLowerCase() || "").includes(searchTerm.toLowerCase());
-    const matchesClient = !filters.client || filters.client === "All Clients" || projectClient === filters.client;
+    const searchTermMatch =
+      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (typeof project.client === 'string' && project.client.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    const matchesBillable =
-      !filters.billable ||
+    const clientFilterMatch =
+      filters.client === "" || filters.client === "All Clients" || (typeof project.client === 'string' && project.client === filters.client)
+
+    const billableFilterMatch =
+      filters.billable === "" ||
       filters.billable === "All" ||
       (filters.billable === "Billable" && project.isBillable) ||
-      (filters.billable === "Non-Billable" && !project.isBillable);
-    const matchesTemplate =
-      !filters.template || filters.template === "All Templates" || project.template === filters.template;
+      (filters.billable === "Non-Billable" && !project.isBillable)
 
-    return matchesSearch && matchesClient && matchesBillable && matchesTemplate;
+    const templateFilterMatch =
+      filters.template === "" || filters.template === "All Templates" || project.template === filters.template
+
+    return searchTermMatch && clientFilterMatch && billableFilterMatch && templateFilterMatch
   })
 
   const handleEditProject = (project: Project) => {
@@ -305,66 +298,51 @@ const [filters, setFilters] = useState<Filters>({
     setShowAddModal(true)
   }
 
-  const [statusLoading, setStatusLoading] = useState<{[key:number]: boolean}>({});
-const [statusError, setStatusError] = useState<{[key:number]: string | null}>({});
+  const [statusLoading, setStatusLoading] = useState<Record<number, boolean>>({})
 
-const handleStatusChange = async (projectId: number, newStatus: string) => {
-  setStatusLoading((prev) => ({ ...prev, [projectId]: true }));
-  setStatusError((prev) => ({ ...prev, [projectId]: null }));
-  try {
-    // Persist to backend
-    await updateProject(projectId, {
-      status: newStatus,
-      progress: getStatusProgress(newStatus),
-    });
-    // Update local state
-    setProjects((prev) =>
-      prev.map((project) => {
-        if (project.id === projectId) {
-          const updatedProject = {
-            ...project,
-            status: newStatus,
-            progress: getStatusProgress(newStatus),
-          };
-          if (!updatedProject.recentActivity) updatedProject.recentActivity = [];
-          updatedProject.recentActivity.unshift({
-            action: `Changed status to ${newStatus}`,
-            user: "You",
-            time: "Just now",
-          });
-          return updatedProject;
-        }
-        return project;
-      })
-    );
-  } catch (err: any) {
-    setStatusError((prev) => ({ ...prev, [projectId]: err.message || "Failed to update status" }));
-  } finally {
-    setStatusLoading((prev) => ({ ...prev, [projectId]: false }));
+  const handleStatusChange = async (projectId: number, newStatus: string) => {
+    setStatusLoading(prev => ({ ...prev, [projectId]: true }))
+    try {
+      const project = projects.find(p => p.id === projectId)
+      if (project) {
+        // Optimistic UI update
+        const updatedProjects = projects.map(p => 
+          p.id === projectId ? { ...p, status: newStatus } : p
+        )
+        setProjects(updatedProjects)
+        
+        await updateProject(projectId, { status: newStatus })
+      }
+    } catch (err: any) {
+      setError(`Failed to update status: ${err.message}`)
+      // Revert UI on failure if needed
+    } finally {
+      setStatusLoading(prev => ({ ...prev, [projectId]: false }))
+    }
   }
-}
 
   const handleSaveProject = async (projectData: any) => {
-    if (selectedProject) {
-      // Optionally: implement backend update (PUT/PATCH) here for editing
-      // After update, trigger refetch
-      setLoading(true)
-    } else {
-      try {
-        await createProjectInBackend({
-          name: projectData.name,
-          client: projectData.client,
-          status: projectData.status || "Planning",
-          progress: projectData.progress || 0,
-        })
-        setLoading(true) // trigger refetch from backend
-      } catch (err) {
-        // Optionally show error to user
-        setError(err instanceof Error ? err.message : "Failed to create project");
-        setLoading(false)
+    setLoading(true)
+    setError(null)
+    try {
+      if (projectData.id) {
+        // Update existing project
+        // Find the original project to get the client object if it exists
+        const originalProject = projects.find(p => p.id === projectData.id)
+        if (originalProject) {
+          projectData.client = originalProject.client
+        }
+        await updateProject(projectData.id, projectData)
+      } else {
+        await createProjectInBackend(projectData)
       }
+      setShowAddModal(false)
+      setSelectedProject(null)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false) // This will trigger the useEffect to refetch all projects
     }
-    setSelectedProject(null)
   }
 
   const handleDeleteProject = async (projectId: number) => {
@@ -437,8 +415,8 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
     <>
       {/* Top Header */}
       <header className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-row items-center justify-between w-full">
+          <div className="flex flex-col items-center text-center flex-1">
             <h1 className="text-2xl font-bold text-gray-800">Projects</h1>
             <p className="text-gray-600">
               {projects.length === 0
@@ -446,7 +424,7 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                 : `Managing ${projects.length} project${projects.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 ml-4">
             <Button onClick={() => setShowAddModal(true)} className="bg-purple-600 hover:bg-purple-700 text-white">
               <Plus className="h-4 w-4 mr-2" />
               New Project
@@ -481,7 +459,7 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                   <SelectValue placeholder="Client" />
                 </SelectTrigger>
                 <SelectContent>
-                  {clients.map((client) => (
+                  {clientNames.map((client) => (
                     <SelectItem key={client} value={client}>
                       {client}
                     </SelectItem>
@@ -529,14 +507,14 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
 
       {/* Projects Content */}
       <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-[90%] mx-auto">
           {/* Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjects.map((project) => {
               // Debug logging to see what data we're working with
               console.log('Rendering project:', project)
-              if (project.members) {
-                console.log('Project members:', project.members)
+              if (project.team) {
+                console.log('Project team:', project.team)
               }
               
               // Validate that all data is properly structured
@@ -689,112 +667,11 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
                       </div>
                     )}
 
-                    {/* Team Members */}
-                    <div>
-                      <div className="text-sm text-gray-600 mb-2">Team Members</div>
-                      {Array.isArray(project.members) && project.members.length > 0 ? (
-                        <div className="flex -space-x-2">
-                          {project.members.slice(0, 3).map((member, index) => {
-                            // Professional color palette for avatars
-                            const colors = [
-                              "bg-gradient-to-br from-purple-500 to-purple-600 text-white",
-                              "bg-gradient-to-br from-blue-500 to-blue-600 text-white",
-                              "bg-gradient-to-br from-green-500 to-green-600 text-white",
-                              "bg-gradient-to-br from-orange-500 to-orange-600 text-white",
-                              "bg-gradient-to-br from-pink-500 to-pink-600 text-white",
-                              "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white",
-                              "bg-gradient-to-br from-teal-500 to-teal-600 text-white",
-                              "bg-gradient-to-br from-red-500 to-red-600 text-white",
-                            ]
-                            const colorClass = colors[index % colors.length]
-                            
-                            // Ensure member has required properties with comprehensive validation
-                            let memberName = 'Unknown'
-                            let memberId = index
-                            
-                            try {
-                              if (member && typeof member === 'object') {
-                                memberName = member.name || member.first_name || member.display_name || 'Unknown'
-                                memberId = member.id || member.user_id || index
-                              }
-                            } catch (error) {
-                              console.error('Error processing member:', member, error)
-                              memberName = 'Unknown'
-                              memberId = index
-                            }
-                            
-                            // Ensure memberName is a string
-                            if (typeof memberName !== 'string') {
-                              memberName = String(memberName) || 'Unknown'
-                            }
-
-                            return (
-                              <div
-                                key={memberId}
-                                className={`h-8 w-8 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${colorClass}`}
-                                title={memberName}
-                              >
-                                <span className="text-xs font-semibold">
-                                  {memberName
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .toUpperCase()}
-                                </span>
-                              </div>
-                            )
-                          })}
-                          {project.members.length > 3 && (
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 border-2 border-white flex items-center justify-center shadow-sm">
-                              <span className="text-xs text-white font-semibold">+{project.members.length - 3}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400">No members</div>
-                      )}
-                    </div>
-
-                    {/* Recent Activity */}
-                    <div>
-                      <div className="text-sm text-gray-600 mb-2">Recent Activity</div>
-                      {Array.isArray(project.recentActivity) && project.recentActivity.length > 0 ? (
-                        <div className="space-y-1">
-                          {project.recentActivity.slice(0, 2).map((activity, index) => {
-                            // Ensure all activity properties are strings
-                            const user = typeof activity.user === 'string' ? activity.user : 'Unknown';
-                            const action = typeof activity.action === 'string' ? activity.action : 'Unknown action';
-                            const time = typeof activity.time === 'string' ? activity.time : 'Unknown time';
-                            
-                            return (
-                              <div key={index} className="text-xs text-gray-500">
-                                <span className="font-medium">{user}</span> {action}
-                                <span className="text-gray-400 ml-1">• {time}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400">No recent activity</div>
-                      )}
-                    </div>
-
                     {/* Project Info */}
-                    <div className="flex justify-between text-xs text-gray-500 pt-2 border-t">
-                      <span>Created: {projectCreatedDate}</span>
-                      {project.deadline && (
-                        <span
-                          className={
-                            isDeadlineOverdue(project.deadline) && projectStatus !== "Completed"
-                              ? "text-red-600 font-medium"
-                              : (isDeadlineNear(project.deadline) && projectStatus !== "Completed"
-                                ? "text-orange-600 font-medium"
-                                : "")
-                          }
-                        >
-                          Due: {projectDeadline}
-                        </span>
-                      )}
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="flex justify-between items-center text-xs text-gray-400">
+                        <span>Created: {new Date(project.createdDate).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -886,7 +763,9 @@ const handleStatusChange = async (projectId: number, newStatus: string) => {
         }}
         onSave={handleSaveProject}
         project={selectedProject}
+        clients={clients}
       />
     </>
   )
 }
+

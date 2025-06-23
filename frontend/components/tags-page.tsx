@@ -113,9 +113,11 @@ export function TagsPage() {
       <TagModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSaveTag} tag={editingTag} />
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-800">Tags</h1>
-          <Button onClick={handleAddTag} className="bg-green-500 hover:bg-green-600 text-white px-6">
+        <div className="flex flex-row items-center justify-between w-full">
+          <div className="flex flex-col items-center text-center flex-1">
+            <h1 className="text-2xl font-semibold text-gray-800">Tags</h1>
+          </div>
+          <Button onClick={handleAddTag} className="bg-green-500 hover:bg-green-600 text-white px-6 ml-4">
             <Plus className="h-4 w-4 mr-2" />
             Add Tag
           </Button>
@@ -123,25 +125,21 @@ export function TagsPage() {
       </div>
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
-          {/* Search and Filter */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Search (centered) */}
+          <div className="flex justify-center mb-6 w-full">
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search tags..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 bg-white"
               />
             </div>
-            <Button variant="outline" className="flex items-center">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
           </div>
           {/* Tags Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
+            <Card className="bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Tags</CardTitle>
                 <TagIcon className="h-4 w-4 text-muted-foreground" />
@@ -151,7 +149,7 @@ export function TagsPage() {
                 <p className="text-xs text-muted-foreground">Use tags to categorize your time entries</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Most Used Tag</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
@@ -163,7 +161,7 @@ export function TagsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className="bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Tag Usage</CardTitle>
                 <Filter className="h-4 w-4 text-muted-foreground" />
@@ -175,7 +173,7 @@ export function TagsPage() {
             </Card>
           </div>
           {/* Tags List */}
-          <Card>
+          <Card className="bg-white">
             <CardHeader>
               <CardTitle>All Tags</CardTitle>
               <CardDescription>Manage and organize your time tracking tags</CardDescription>
@@ -208,7 +206,7 @@ export function TagsPage() {
                       }
                     }
                     return (
-                      <div key={tag.id} className={`border rounded-lg p-4 flex items-start justify-between`} style={bgStyle}>
+                      <div key={tag.id} className={`border rounded-lg p-4 flex items-start justify-between bg-white`} style={bgStyle}>
                         <div className={`flex items-start space-x-3`}>
                           <div className={`w-4 h-4 rounded-full mt-1 ${bgClass}`} style={bgStyle}></div>
                           <div>

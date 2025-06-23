@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { apiRequest } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 
 interface Client {
   id?: number | string;
   name: string;
+  // Note: Backend only supports name field, other fields are frontend-only for future use
   email?: string;
   address?: string;
   note?: string;
@@ -27,12 +29,34 @@ interface ClientModalProps {
 
 export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProps) {
   const [formData, setFormData] = useState<Client>({
-    name: client?.name || "",
-    email: client?.email || "",
-    address: client?.address || "",
-    note: client?.note || "",
-    currency: client?.currency || "USD",
+    name: "",
+    email: "",
+    address: "",
+    note: "",
+    currency: "USD",
   })
+
+  useEffect(() => {
+    if (isOpen) {
+      if (client) {
+        setFormData({
+          name: client.name || "",
+          email: client.email || "",
+          address: client.address || "",
+          note: client.note || "",
+          currency: client.currency || "USD",
+        })
+      } else {
+        setFormData({
+          name: "",
+          email: "",
+          address: "",
+          note: "",
+          currency: "USD",
+        })
+      }
+    }
+  }, [client, isOpen])
 
   const [clientNameSuggestions, setClientNameSuggestions] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -45,17 +69,56 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
     
     try {
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
-      const res = await apiRequest(`${API_BASE}/projects/clients/`, {
-        method: 'POST',
-        body: JSON.stringify({ name: formData.name }),
-      });
+      console.log('API_BASE:', API_BASE);
+      console.log('Form data:', formData);
+      
+      // Check if user is authenticated
+      const isAuth = auth.isAuthenticated();
+      console.log('User authenticated:', isAuth);
+      
+      if (!isAuth) {
+        setError("You must be logged in to save clients.");
+        setLoading(false);
+        return;
+      }
+      
+      let res;
+      if (client?.id) {
+        // Update existing client
+        console.log('Updating existing client with ID:', client.id);
+        res = await apiRequest(`${API_BASE}/projects/clients/${client.id}/`, {
+          method: 'PUT',
+          body: JSON.stringify(formData),
+        });
+      } else {
+        // Create new client
+        console.log('Creating new client');
+        res = await apiRequest(`${API_BASE}/projects/clients/`, {
+          method: 'POST',
+          body: JSON.stringify(formData),
+        });
+      }
+      
+      console.log('API Response status:', res.status);
+      console.log('API Response ok:', res.ok);
       
       if (res.ok) {
         const savedClient = await res.json();
-        onSave(savedClient);
+        console.log('Saved client from backend:', savedClient);
+        // Merge the saved client data with the frontend form data
+        const fullClientData = {
+          ...savedClient,
+          email: formData.email,
+          address: formData.address,
+          note: formData.note,
+          currency: formData.currency,
+        };
+        console.log('Full client data to save:', fullClientData);
+        onSave(fullClientData);
         onClose();
       } else {
         const errorBody = await res.text();
+        console.log('Error response body:', errorBody);
         let userMessage = "Failed to save client.";
         try {
           const errorJson = JSON.parse(errorBody);
@@ -89,11 +152,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
     e.preventDefault()
     if (loading) return
     
-    if (client) {
-      onSave({ ...formData, id: client.id })
-    } else {
-      handleSave()
-    }
+    handleSave()
   }
 
   const handleCancel = () => {

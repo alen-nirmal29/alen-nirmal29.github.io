@@ -66,7 +66,6 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = ['*']
 CORS_ALLOWED_HEADERS = [
     'accept',
     'accept-encoding',

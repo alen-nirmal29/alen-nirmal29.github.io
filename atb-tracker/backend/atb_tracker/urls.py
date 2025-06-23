@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -26,6 +27,7 @@ urlpatterns = [
     path('api/pomodoros/', include('pomodoro.urls')),
     path('api/user-settings/', include('user_settings.urls')),
     path('api/auth/', include('auth_app.urls')),
+    path('', lambda request: JsonResponse({"message": "ATB Tracker API is running."})),
 ]
 
 # Serve media files in development

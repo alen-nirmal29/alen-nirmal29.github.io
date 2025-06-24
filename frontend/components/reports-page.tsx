@@ -39,11 +39,11 @@ export function ReportsPage() {
       setLoadingData(true)
       try {
         // Fetch projects from backend
-        const projectsRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`)
+        const projectsRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/`)
         const projectsData = await projectsRes.json()
         setProjects(projectsData)
         // Fetch time entries from backend
-        const timeRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/time-entries/`)
+        const timeRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/time-entries/`)
         const timeData = await timeRes.json()
         setTimeEntries(timeData)
         // Fetch pomodoro sessions from backend

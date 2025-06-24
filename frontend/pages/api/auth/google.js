@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     }
 
     // Send user data to Django backend for storage/verification
-    const DJANGO_API_URL = process.env.DJANGO_API_URL || 'https://atb-tracker.onrender.com';
+    const DJANGO_API_URL = process.env.NEXT_PUBLIC_API_BASE || 'https://atb-tracker.onrender.com';
     
     const backendResponse = await fetch(`${DJANGO_API_URL}/api/auth/google/`, {
       method: 'POST',

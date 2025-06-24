@@ -1,6 +1,6 @@
 import { apiRequest } from '../lib/auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"
 
 export async function fetchProjects() {
   const res = await apiRequest(`${API_BASE}/projects/`)

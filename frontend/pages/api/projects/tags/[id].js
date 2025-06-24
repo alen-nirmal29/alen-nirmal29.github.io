@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
   const { id } = req.query;
-  const DJANGO_API_URL = process.env.DJANGO_API_URL || "http://localhost:8000";
+  const DJANGO_API_URL = process.env.DJANGO_API_URL || "https://atb-tracker.onrender.com";
   const url = `${DJANGO_API_URL}/api/projects/tags/${id}/`;
 
   // Forward the Authorization header if present

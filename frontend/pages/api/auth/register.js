@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     }
 
     // Set the Django API URL with fallback
-    const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
+    const DJANGO_API_URL = process.env.DJANGO_API_URL || 'https://atb-tracker.onrender.com';
 
     // Forward the request to Django backend
     const response = await fetch(`${DJANGO_API_URL}/api/users/members/`, {

@@ -151,7 +151,7 @@ const [filters, setFilters] = useState<Filters>({
       try {
         setLoading(true)
         const projectsData = await fetchProjects();
-        const clientsData = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/clients/`).then(res => res.json());
+        const clientsData = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/clients/`).then(res => res.json());
 
         if (Array.isArray(projectsData)) {
           // Normalize projects data

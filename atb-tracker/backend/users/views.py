@@ -8,6 +8,7 @@ from .models import Member
 from .serializers import MemberSerializer
 from .utils import get_tokens_for_user
 from .authentication import UserDataIsolationMixin
+from rest_framework import serializers
 
 class MemberListCreateView(generics.ListCreateAPIView):
     queryset = Member.objects.all()
@@ -26,8 +27,16 @@ class MemberListCreateView(generics.ListCreateAPIView):
         }
         return response
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
 class LoginView(generics.GenericAPIView):
+    serializer_class = LoginSerializer
     permission_classes = [AllowAny]
+    
+    def get(self, request, *args, **kwargs):
+        return Response({'detail': 'Method "GET" not allowed.'}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
     
     def post(self, request):
         email = request.data.get('email')

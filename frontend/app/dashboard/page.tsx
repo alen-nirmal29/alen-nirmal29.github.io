@@ -38,7 +38,6 @@ import { TagsPage } from "@components/tags-page"
 import { useAuth } from "@components/auth/auth-context"
 import { useRouter } from "next/navigation"
 import { fetchPomodoroSessions, PomodoroSession } from "@/utils/pomodoro-api"
-import ProtectedRoute from "@/components/auth/protected-route"
 
 // Notification type definitions
 export type NotificationType = "deadline" | "task" | "reminder";
@@ -103,11 +102,17 @@ interface TimeEntry {
 }
 
 export default function DashboardPage() {
-  return (
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  )
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  return <Dashboard />;
 }
 
 function Dashboard() {

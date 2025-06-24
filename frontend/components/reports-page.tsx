@@ -23,6 +23,7 @@ import {
 } from "recharts"
 import { fetchPomodoroSessions, PomodoroSession } from "@/utils/pomodoro-api"
 import { apiRequest } from "@/lib/auth"
+import { API_BASE } from '@/lib/auth'
 
 export function ReportsPage() {
   const [timePeriod, setTimePeriod] = useState<"daily" | "weekly" | "monthly">("weekly")
@@ -39,11 +40,11 @@ export function ReportsPage() {
       setLoadingData(true)
       try {
         // Fetch projects from backend
-        const projectsRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/`)
+        const projectsRes = await apiRequest(`${API_BASE}/projects/`)
         const projectsData = await projectsRes.json()
         setProjects(projectsData)
         // Fetch time entries from backend
-        const timeRes = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/time-entries/`)
+        const timeRes = await apiRequest(`${API_BASE}/projects/time-entries/`)
         const timeData = await timeRes.json()
         setTimeEntries(timeData)
         // Fetch pomodoro sessions from backend

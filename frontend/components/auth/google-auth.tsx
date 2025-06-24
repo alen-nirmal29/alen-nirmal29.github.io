@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth"
 import { useAuth } from "./auth-context"
 import { signInWithGoogle } from "@/lib/firebase"
+import { API_BASE } from "@/lib/auth"
 
 interface GoogleAuthButtonProps {
   mode: 'signup' | 'login'
@@ -22,7 +23,7 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       // Use Firebase Google authentication
       const { user: firebaseUser, idToken } = await signInWithGoogle()
       
-      const response = await fetch('/api/auth/google', {
+      const response = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

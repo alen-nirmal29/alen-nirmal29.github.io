@@ -1,6 +1,5 @@
-import { apiRequest } from '../lib/auth';
+import { apiRequest, API_BASE } from '../lib/auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api";
 const POMODORO_ENDPOINT = `${API_BASE}/pomodoros/`;
 
 export interface PomodoroSession {

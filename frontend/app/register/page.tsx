@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff } from "lucide-react";
 import { GoogleAuthButton } from "@/components/auth/google-auth";
+import { API_BASE } from "@/lib/auth";
 
 export default function RegisterPage() {
   const [isClient, setIsClient] = useState(false);
@@ -67,7 +68,7 @@ export default function RegisterPage() {
       const first_name = nameParts[0];
       const last_name = nameParts[1] || '';
 
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(`${API_BASE}/users/members/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

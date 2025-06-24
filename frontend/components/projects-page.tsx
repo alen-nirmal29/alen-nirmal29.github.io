@@ -36,6 +36,7 @@ import { fetchProjects, createProject, updateProject } from "@/utils/projects-ap
 import { apiRequest } from "@/lib/auth"
 import React from "react"
 import { Client } from "@/types"
+import { API_BASE } from '@/lib/auth'
 
 // Add this function for backend delete
 async function deleteProjectFromBackend(projectId: number) {
@@ -151,7 +152,7 @@ const [filters, setFilters] = useState<Filters>({
       try {
         setLoading(true)
         const projectsData = await fetchProjects();
-        const clientsData = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api"}/projects/clients/`).then(res => res.json());
+        const clientsData = await apiRequest(`${API_BASE}/projects/clients/`).then(res => res.json());
 
         if (Array.isArray(projectsData)) {
           // Normalize projects data

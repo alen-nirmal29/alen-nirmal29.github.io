@@ -1,6 +1,6 @@
 import { User } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api";
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://atb-tracker.onrender.com/api";
 
 export interface AuthTokens {
   access: string;

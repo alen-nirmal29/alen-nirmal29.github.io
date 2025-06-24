@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ClientModal } from "./client-modal"
-import { apiRequest } from "@/lib/auth"
+import { apiRequest, API_BASE } from '@/lib/auth'
 
 interface Client {
   id?: number | string;
@@ -24,9 +24,6 @@ export function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showActive, setShowActive] = useState("active")
   const [selectedClients, setSelectedClients] = useState<number[]>([]) // Use number[]
-
-  // API base for backend requests
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
 
   // Fetch clients from backend
   useEffect(() => {

@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { apiRequest } from "@/lib/auth"
-import { auth } from "@/lib/auth"
+import { apiRequest, API_BASE, auth } from "@/lib/auth"
 
 interface Client {
   id?: number | string;
@@ -68,7 +67,6 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
     setError("")
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://atb-tracker.onrender.com/api';
       console.log('API_BASE:', API_BASE);
       console.log('Form data:', formData);
       

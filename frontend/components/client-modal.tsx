@@ -68,7 +68,7 @@ export function ClientModal({ isOpen, onClose, onSave, client }: ClientModalProp
     setError("")
     
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000/api';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://atb-tracker.onrender.com/api';
       console.log('API_BASE:', API_BASE);
       console.log('Form data:', formData);
       

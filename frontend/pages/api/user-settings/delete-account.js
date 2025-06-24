@@ -9,26 +9,7 @@ export default async function handler(req, res) {
   const token = req.headers.authorization;
   
   // Set the Django API URL with fallback
-  const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
+  const DJANGO_API_URL = process.env.DJANGO_API_URL || 'https://atb-tracker.onrender.com';
   
   try {
-    const response = await fetch(`${DJANGO_API_URL}/api/user-settings/delete-account/`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
-    
-    return res.status(response.status).json(data);
-  } catch (error) {
-    console.error('Delete account API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-} 
+    const response = await fetch(`

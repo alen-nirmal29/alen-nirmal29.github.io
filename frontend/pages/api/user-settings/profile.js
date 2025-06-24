@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   console.log('Authorization header:', token);
   
   // Set the Django API URL with fallback
-  const DJANGO_API_URL = process.env.DJANGO_API_URL || 'http://localhost:8000';
+  const DJANGO_API_URL = process.env.DJANGO_API_URL || 'https://atb-tracker.onrender.com';
   
   try {
     let response;

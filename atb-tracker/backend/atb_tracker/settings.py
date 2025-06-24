@@ -104,7 +104,8 @@ WSGI_APPLICATION = 'atb_tracker.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
+        default=os.environ.get('DATABASE_URL', 'postgres://atb_tracker_user:your_password@localhost:5432/atb_tracker_db'),
+        engine='django.db.backends.postgresql',
     )
 }
 

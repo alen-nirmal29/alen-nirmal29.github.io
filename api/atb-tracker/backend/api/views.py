@@ -1,6 +1,6 @@
 from rest_framework import viewsets, filters
-from .models import TimeEntry, PomodoroSession
-from .serializers import TimeEntrySerializer, PomodoroSessionSerializer
+from .models import TimeEntry, PomodoroSession, Tag
+from .serializers import TimeEntrySerializer, PomodoroSessionSerializer, TagSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -16,9 +16,6 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 @method_decorator(csrf_exempt, name='dispatch')
-import logging
-
-@method_decorator(csrf_exempt, name='dispatch')
 class PomodoroSessionViewSet(viewsets.ModelViewSet):
     queryset = PomodoroSession.objects.all().order_by('-start_time')
     serializer_class = PomodoroSessionSerializer
@@ -27,12 +24,17 @@ class PomodoroSessionViewSet(viewsets.ModelViewSet):
     ordering_fields = ['start_time']
 
     def create(self, request, *args, **kwargs):
+        import logging
         logger = logging.getLogger("pomodoro")
         logger.warning(f"Pomodoro POST data: {request.data}")
         response = super().create(request, *args, **kwargs)
         if hasattr(response, 'data') and response.status_code >= 400:
             logger.error(f"Pomodoro serializer errors: {getattr(response, 'data', None)}")
         return response
+
+class TagViewSet(viewsets.ModelViewSet):
+    queryset = Tag.objects.all().order_by('-created_at')
+    serializer_class = TagSerializer
 
 @api_view(['GET'])
 def hello_world(request):

@@ -26,3 +26,13 @@ class PomodoroSession(models.Model):
 
     def __str__(self):
         return f"Pomodoro {self.start_time} - {self.duration}m"
+
+class Tag(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    color = models.CharField(max_length=50, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

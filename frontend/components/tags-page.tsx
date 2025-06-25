@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { apiRequest } from "@/lib/auth"
+import { API_BASE } from "@/lib/auth"
 
 interface Tag {
   id?: string | number
@@ -47,7 +48,7 @@ export function TagsPage() {
   useEffect(() => {
     const fetchTags = async () => {
       try {
-        const response = await apiRequest("/api/projects/tags/")
+        const response = await apiRequest(`${API_BASE}/projects/tags/`)
         const data = await response.json()
         setTags(data)
       } catch (error) {
@@ -75,7 +76,7 @@ export function TagsPage() {
 
   const handleDeleteTag = async (id: string | number) => {
     try {
-      await apiRequest(`/api/projects/tags/${id}/`, { method: "DELETE" })
+      await apiRequest(`${API_BASE}/projects/tags/${id}/`, { method: "DELETE" })
       setTags(tags.filter(tag => tag.id !== id))
     } catch (error) {
       console.error("Failed to delete tag:", error)
@@ -87,7 +88,7 @@ export function TagsPage() {
       console.log("Saving tag:", tagData)
       if (tagData.id) {
         // Edit existing tag
-        const res = await apiRequest(`/api/projects/tags/${tagData.id}/`, {
+        const res = await apiRequest(`${API_BASE}/projects/tags/${tagData.id}/`, {
           method: "PATCH",
           body: JSON.stringify(tagData)
         })
@@ -95,7 +96,7 @@ export function TagsPage() {
         setTags(tags.map(tag => tag.id === updatedTag.id ? updatedTag : tag))
       } else {
         // Add new tag
-        const res = await apiRequest(`/api/projects/tags/`, {
+        const res = await apiRequest(`${API_BASE}/projects/tags/`, {
           method: "POST",
           body: JSON.stringify(tagData)
         })

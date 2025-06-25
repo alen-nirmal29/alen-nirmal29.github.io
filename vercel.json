@@ -4,6 +4,6 @@
     { "src": "api/atb_tracker/wsgi.py", "use": "@vercel/python" }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "api/atb_tracker/wsgi.py" }
+    { "src": "/(.*)", "dest": "api/atb-tracker/backend/atb_tracker/wsgi.py" }
   ]
 } 

@@ -138,6 +138,7 @@ export default function RegisterPage() {
               onChange={(e) => handleChange("name", e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              autocomplete="name"
             />
           </div>
 
@@ -149,6 +150,7 @@ export default function RegisterPage() {
               onChange={(e) => handleChange("email", e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              autocomplete="email"
             />
           </div>
 
@@ -161,6 +163,7 @@ export default function RegisterPage() {
               className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               minLength={6}
+              autocomplete="new-password"
             />
             <button
               type="button"
@@ -180,6 +183,7 @@ export default function RegisterPage() {
               className="w-full px-4 py-3 pr-12 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               minLength={6}
+              autocomplete="new-password"
             />
             <button
               type="button"

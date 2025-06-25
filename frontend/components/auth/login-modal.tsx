@@ -107,6 +107,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
                 disabled={isLoading}
+                autocomplete="email"
               />
             </div>
 
@@ -124,6 +125,7 @@ export function LoginModal({ onClose }: LoginModalProps) {
                   className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                   disabled={isLoading}
+                  autocomplete="current-password"
                 />
                 <button
                   type="button"

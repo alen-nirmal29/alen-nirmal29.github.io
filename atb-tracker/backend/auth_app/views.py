@@ -11,7 +11,7 @@ import json
 from users.models import Member
 from users.utils import get_tokens_for_user
 
-@api_view(['POST'])
+@api_view(['POST','GET'])
 @permission_classes([AllowAny])
 def google_auth(request):
     """
@@ -91,7 +91,7 @@ def google_auth(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['POST'])
+@api_view(['POST','GET'])
 @permission_classes([AllowAny])
 def verify_token(request):
     """
@@ -145,7 +145,7 @@ def verify_token(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-@api_view(['POST'])
+@api_view(['POST','GET'])
 @permission_classes([AllowAny])
 def logout(request):
     """

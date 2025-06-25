@@ -53,6 +53,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { apiRequest } from "@/lib/auth"
+import { API_BASE } from "@/lib/auth"
 import { toast } from "@/components/ui/use-toast"
 
 export function SettingsPage() {
@@ -83,7 +84,7 @@ export function SettingsPage() {
     async function fetchProfile() {
       setLoading(true)
       try {
-        const res = await apiRequest("/api/user-settings/profile/", {
+        const res = await apiRequest(`${API_BASE}/user-settings/profile/`, {
           method: "GET"
         })
         const data = await res.json()
@@ -136,7 +137,7 @@ export function SettingsPage() {
         formData.append('avatar', avatarFile);
       }
 
-      const res = await apiRequest("/api/user-settings/profile/", {
+      const res = await apiRequest(`${API_BASE}/user-settings/profile/`, {
         method: "PATCH",
         body: formData,
       });
@@ -180,7 +181,7 @@ export function SettingsPage() {
     }
 
     try {
-      const res = await apiRequest("/api/user-settings/delete-account/", {
+      const res = await apiRequest(`${API_BASE}/user-settings/delete-account/`, {
         method: "DELETE"
       })
       

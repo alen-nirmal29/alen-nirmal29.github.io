@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { auth } from "@/lib/auth"
 import { User } from "@/types"
+import { useRouter, usePathname } from "next/navigation"
 
 interface AuthContextType {
   user: User | null
@@ -19,6 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter();
+  const pathname = usePathname();
 
   const verifyToken = async (): Promise<boolean> => {
     try {
@@ -65,6 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     verifyToken()
   }, [])
+
+  // Redirect to dashboard after successful authentication
+  useEffect(() => {
+    if (isAuthenticated && user && pathname !== "/dashboard") {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, user, pathname, router]);
 
   const login = (userData: User) => {
     console.log("AuthContext: login called with userData:", userData)

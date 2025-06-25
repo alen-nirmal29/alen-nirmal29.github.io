@@ -41,7 +41,7 @@ import { API_BASE } from '@/lib/auth'
 // Add this function for backend delete
 async function deleteProjectFromBackend(projectId: number) {
   const res = await apiRequest(
-    `${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/${projectId}/`,
+    `${API_BASE}/projects/${projectId}/`,
     { method: "DELETE" }
   );
   if (!res.ok) throw new Error("Failed to delete project in backend");
@@ -58,7 +58,7 @@ async function createProjectInBackend(projectData: any) {
       client_name: projectData.client || "",
     };
 
-    const response = await apiRequest(`${process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api"}/projects/`, {
+    const response = await apiRequest(`${API_BASE}/projects/`, {
       method: "POST",
       body: JSON.stringify(projectPayload),
     });

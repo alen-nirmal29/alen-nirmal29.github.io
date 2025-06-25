@@ -1,6 +1,9 @@
 import { User } from '@/types';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || https://atb-tracker.onrender.com/api;
+if (!process.env.NEXT_PUBLIC_API_BASE) {
+  throw new Error('NEXT_PUBLIC_API_BASE environment variable is not set!');
+}
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
 
 export interface AuthTokens {
   access: string;

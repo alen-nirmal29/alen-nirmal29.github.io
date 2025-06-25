@@ -167,6 +167,7 @@ export default function LandingPage() {
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 className="w-full px-4 py-3 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
+                autocomplete="name"
               />
             </div>
 
@@ -178,6 +179,7 @@ export default function LandingPage() {
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className="w-full px-4 py-3 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
+                autocomplete="email"
               />
             </div>
 
@@ -189,6 +191,7 @@ export default function LandingPage() {
                 onChange={(e) => handleInputChange("password", e.target.value)}
                 className="w-full px-4 py-3 pr-12 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
+                autocomplete="new-password"
               />
               <button
                 type="button"
@@ -208,6 +211,7 @@ export default function LandingPage() {
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 className="w-full px-4 py-3 pr-12 rounded-full border-0 bg-white/90 backdrop-blur-sm placeholder:text-gray-500 text-gray-800 focus:ring-2 focus:ring-blue-500"
                 suppressHydrationWarning
+                autocomplete="new-password"
               />
               <button
                 type="button"

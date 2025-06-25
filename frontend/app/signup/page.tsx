@@ -51,18 +51,21 @@ export default function SignupPage() {
           placeholder="Name"
           value={formData.name}
           onChange={(e) => handleChange("name", e.target.value)}
+          autocomplete="name"
         />
         <Input
           type="email"
           placeholder="Email"
           value={formData.email}
           onChange={(e) => handleChange("email", e.target.value)}
+          autocomplete="email"
         />
         <Input
           type="password"
           placeholder="Password"
           value={formData.password}
           onChange={(e) => handleChange("password", e.target.value)}
+          autocomplete="new-password"
         />
         {error && <div className="text-red-600 text-sm text-center">{error}</div>}
         {success && <div className="text-green-600 text-sm text-center">Registration successful! Redirecting...</div>}

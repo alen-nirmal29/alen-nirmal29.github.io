@@ -68,7 +68,7 @@ MIDDLEWARE = [
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "https://atb-tracker.vercel.app"
+    "https://alen-nirmal29-github-io-wtql.onrender.com"
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_HEADERS = [

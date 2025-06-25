@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   env: {
-    DJANGO_API_URL: process.env.DJANGO_API_URL || 'https://atb-tracker.onrender.com',
+    DJANGO_API_URL: process.env.NEXT_PUBLIC_API_BASE || https://atb-tracker.onrender.com,
   },
 };
 

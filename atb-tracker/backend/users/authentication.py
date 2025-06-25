@@ -24,7 +24,6 @@ class CustomJWTAuthentication(JWTAuthentication):
             
             user = self.get_user(validated_token)
             
-            logger.debug(f"JWT authentication successful for user: {user}")
             return (user, validated_token)
             
         except InvalidToken as e:

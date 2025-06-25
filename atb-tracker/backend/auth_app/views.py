@@ -11,12 +11,18 @@ import json
 from users.models import Member
 from users.utils import get_tokens_for_user
 
-@api_view(['POST','GET'])
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def google_auth(request):
     """
     Handle Google authentication for both signup and login
     """
+    if request.method != 'POST':
+        return Response(
+            {'error': 'Only POST method is allowed'}, 
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
     try:
         # Use DRF's request.data instead of manually parsing JSON
         data = request.data

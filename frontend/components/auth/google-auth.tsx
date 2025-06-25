@@ -20,16 +20,6 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
   const handleGoogleAuth = async () => {
     setIsLoading(true)
     try {
-      // Test the endpoint first
-      console.log('Testing endpoint connectivity...')
-      const testResponse = await fetch(`${API_BASE}/auth/google`, {
-        method: 'OPTIONS',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-      console.log('Test response status:', testResponse.status)
-      
       // Use Firebase Google authentication
       const { user: firebaseUser, idToken } = await signInWithGoogle()
       
@@ -67,19 +57,25 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       console.log('Google auth response status:', response.status)
       console.log('Google auth response headers:', Object.fromEntries(response.headers.entries()))
 
-      // Read response body only once
+      // Read response body only once and handle all cases
       let responseData
+      const responseText = await response.text()
+      
       try {
-        responseData = await response.json()
+        responseData = JSON.parse(responseText)
       } catch (parseError) {
-        console.error('Failed to parse response:', parseError)
-        const textResponse = await response.text()
-        console.error('Raw response:', textResponse)
-        throw new Error(`HTTP ${response.status}: ${textResponse}`)
+        console.error('Failed to parse response as JSON:', parseError)
+        console.error('Raw response text:', responseText)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${responseText}`)
+        } else {
+          throw new Error('Invalid JSON response from server')
+        }
       }
 
       if (!response.ok) {
-        throw new Error(responseData.error || 'Google authentication failed')
+        throw new Error(responseData.error || `HTTP ${response.status}: ${responseText}`)
       }
 
       console.log('Google auth success data:', responseData)
@@ -96,7 +92,7 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
         // Call the success callback with user data
         onSuccess?.(responseData.user)
       } else {
-        throw new Error('Invalid response from server')
+        throw new Error('Invalid response from server - missing user or tokens')
       }
 
     } catch (error: any) {
@@ -112,7 +108,11 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       type="button"
       variant="outline"
       className="w-full py-3 border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors disabled:opacity-50"
-      onClick={handleGoogleAuth}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        handleGoogleAuth()
+      }}
       disabled={isLoading}
     >
       {isLoading ? (

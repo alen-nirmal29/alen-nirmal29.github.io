@@ -18,13 +18,20 @@ def google_auth(request):
     Handle Google authentication for both signup and login
     """
     try:
-        data = json.loads(request.body)
+        # Use DRF's request.data instead of manually parsing JSON
+        data = request.data
+        print(f"Received Google auth request data: {data}")
+        print(f"Request content type: {request.content_type}")
+        print(f"Request body: {request.body}")
+        
         firebase_uid = data.get('firebase_uid')
         email = data.get('email')
         name = data.get('name')
         picture = data.get('picture')
         mode = data.get('mode')  # 'signup' or 'login'
         email_verified = data.get('email_verified', False)
+
+        print(f"Extracted fields: firebase_uid={firebase_uid}, email={email}, name={name}, mode={mode}")
 
         if not all([firebase_uid, email, name]):
             return Response(
@@ -80,12 +87,8 @@ def google_auth(request):
             'message': f"User {'registered' if mode == 'signup' else 'logged in'} successfully"
         }, status=status.HTTP_200_OK)
 
-    except json.JSONDecodeError:
-        return Response(
-            {'error': 'Invalid JSON data'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
     except Exception as e:
+        print(f"Google auth error: {str(e)}")
         return Response(
             {'error': str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -98,7 +101,8 @@ def verify_token(request):
     Verify JWT authentication token
     """
     try:
-        data = json.loads(request.body)
+        # Use DRF's request.data instead of manually parsing JSON
+        data = request.data
         token = data.get('token')
 
         if not token:
@@ -134,11 +138,6 @@ def verify_token(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    except json.JSONDecodeError:
-        return Response(
-            {'error': 'Invalid JSON data'}, 
-            status=status.HTTP_400_BAD_REQUEST
-        )
     except Exception as e:
         return Response(
             {'error': str(e)}, 

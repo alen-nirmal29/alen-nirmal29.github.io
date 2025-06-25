@@ -37,7 +37,7 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
         email_verified: true
       }
       
-      const requestUrl = `${API_BASE}/auth/google`
+      const requestUrl = `${API_BASE}/auth/google/`
       console.log('API_BASE:', API_BASE)
       console.log('Request URL:', requestUrl)
       console.log('Sending Google auth request with data:', requestData)

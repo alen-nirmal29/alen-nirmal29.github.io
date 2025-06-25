@@ -180,7 +180,7 @@ export function SettingsPage() {
     }
 
     try {
-      const res = await apiRequest("/api/user-settings/delete-account", {
+      const res = await apiRequest("/api/user-settings/delete-account/", {
         method: "DELETE"
       })
       

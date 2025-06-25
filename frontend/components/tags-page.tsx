@@ -25,9 +25,9 @@ function TagModal({ open, onClose, onSave, tag }: { open: boolean, onClose: () =
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
         <h2 className="text-lg font-semibold mb-4">{tag ? "Edit Tag" : "Add Tag"}</h2>
         <div className="space-y-4">
-          <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          <Input placeholder="Color (e.g. bg-blue-500)" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} />
-          <Input placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          <Input placeholder="Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} autocomplete="off" />
+          <Input placeholder="Color (e.g. bg-blue-500)" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} autocomplete="off" />
+          <Input placeholder="Description" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} autocomplete="off" />
         </div>
         <div className="flex justify-end space-x-2 mt-6">
           <Button variant="outline" onClick={onClose}>Cancel</Button>

@@ -396,7 +396,7 @@ const [filters, setFilters] = useState<Filters>({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Input placeholder="Enter task name" className="w-full" />
+              <Input placeholder="Enter task name" className="w-full" autocomplete="off" />
               <Textarea placeholder="Task description" className="w-full" />
               <div className="flex space-x-2">
                 <Button className="bg-purple-600 hover:bg-purple-700 text-white">Create Task</Button>

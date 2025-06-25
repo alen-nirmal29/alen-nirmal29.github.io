@@ -56,7 +56,7 @@ export default function LandingPage() {
       const first_name = nameParts[0];
       const last_name = nameParts[1] || '';
 
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch("/api/auth/register/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

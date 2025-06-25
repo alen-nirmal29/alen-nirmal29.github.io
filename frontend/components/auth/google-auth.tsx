@@ -23,27 +23,57 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
       // Use Firebase Google authentication
       const { user: firebaseUser, idToken } = await signInWithGoogle()
       
+      // Validate required fields
+      if (!firebaseUser.uid || !firebaseUser.email || !firebaseUser.displayName) {
+        throw new Error('Missing required user information from Google')
+      }
+      
+      const requestData = {
+        firebase_uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        name: firebaseUser.displayName || 'Unknown User',
+        picture: firebaseUser.photoURL || null,
+        mode, // 'signup' or 'login'
+        email_verified: true
+      }
+      
+      console.log('Sending Google auth request with data:', requestData)
+      
       const response = await fetch(`${API_BASE}/auth/google`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          firebase_uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          picture: firebaseUser.photoURL,
-          mode, // 'signup' or 'login'
-          email_verified: true
-        })
+        body: JSON.stringify(requestData)
       })
 
+      console.log('Google auth response status:', response.status)
+      console.log('Google auth response headers:', Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
-        const errorData = await response.json()
+        let errorData
+        try {
+          errorData = await response.json()
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError)
+          const textResponse = await response.text()
+          console.error('Raw error response:', textResponse)
+          throw new Error(`HTTP ${response.status}: ${textResponse}`)
+        }
         throw new Error(errorData.error || 'Google authentication failed')
       }
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (parseError) {
+        console.error('Failed to parse success response:', parseError)
+        const textResponse = await response.text()
+        console.error('Raw success response:', textResponse)
+        throw new Error('Invalid response format from server')
+      }
+
+      console.log('Google auth success data:', data)
 
       if (data.user && data.tokens) {
         // Store tokens and user data using auth library

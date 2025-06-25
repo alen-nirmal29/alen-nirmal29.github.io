@@ -29,15 +29,12 @@ export function GoogleAuthButton({ mode, onSuccess, onError }: GoogleAuthButtonP
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          idToken,
+          firebase_uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          name: firebaseUser.displayName,
+          picture: firebaseUser.photoURL,
           mode, // 'signup' or 'login'
-          user: {
-            firebase_uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: firebaseUser.displayName,
-            picture: firebaseUser.photoURL,
-            email_verified: true
-          }
+          email_verified: true
         })
       })
 

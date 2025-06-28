@@ -4,23 +4,7 @@ import { useState, useEffect } from "react"
 import { TrendingUp, Clock, Target, Activity, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-} from "recharts"
+import { ChartWrapper, RechartsComponents } from "@/components/ui/chart-wrapper"
 import { fetchPomodoroSessions, PomodoroSession } from "@/utils/pomodoro-api"
 import { apiRequest } from "@/lib/auth"
 import { API_BASE } from '@/lib/auth'
@@ -365,199 +349,212 @@ export function ReportsPage() {
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
             {/* Time Tracking Chart */}
-            <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader>
-                <CardTitle>Time Tracking Overview</CardTitle>
-                <CardDescription>Hours worked per {timePeriod === "monthly" ? "week" : "day"}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={currentData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey={timePeriod === "monthly" ? "week" : "day"} />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Area
-                        type="monotone"
-                        dataKey="hours"
-                        stroke="#8b5cf6"
-                        fill="#8b5cf6"
-                        fillOpacity={0.3}
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
+            <ChartWrapper
+              title="Time Tracking Overview"
+              description={`Hours worked per ${timePeriod === "monthly" ? "week" : "day"}`}
+              data={currentData}
+              noDataMessage="No time tracking data available"
+            >
+              <RechartsComponents.ResponsiveContainer width="100%" height="100%">
+                <RechartsComponents.AreaChart data={currentData}>
+                  <RechartsComponents.CartesianGrid strokeDasharray="3 3" />
+                  <RechartsComponents.XAxis dataKey={timePeriod === "monthly" ? "week" : "day"} />
+                  <RechartsComponents.YAxis />
+                  <RechartsComponents.Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 border rounded-lg shadow-lg">
+                            <p className="font-medium">{label}</p>
+                            <p className="text-sm text-gray-600">{payload[0].value}h</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <RechartsComponents.Area
+                    type="monotone"
+                    dataKey="hours"
+                    stroke="#8b5cf6"
+                    fill="#8b5cf6"
+                    fillOpacity={0.3}
+                    strokeWidth={2}
+                  />
+                </RechartsComponents.AreaChart>
+              </RechartsComponents.ResponsiveContainer>
+            </ChartWrapper>
 
             {/* Pomodoro Sessions Chart */}
-            <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader>
-                <CardTitle>Pomodoro Sessions</CardTitle>
-                <CardDescription>Number of completed pomodoro sessions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={pomodoroChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey={timePeriod === "monthly" ? "week" : "day"} />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Bar dataKey="pomodoros" fill="#06b6d4" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </CardContent>
-            </Card>
+            <ChartWrapper
+              title="Pomodoro Sessions"
+              description="Number of completed pomodoro sessions"
+              data={pomodoroChartData}
+              noDataMessage="No Pomodoro sessions available"
+            >
+              <RechartsComponents.ResponsiveContainer width="100%" height="100%">
+                <RechartsComponents.BarChart data={pomodoroChartData}>
+                  <RechartsComponents.CartesianGrid strokeDasharray="3 3" />
+                  <RechartsComponents.XAxis dataKey={timePeriod === "monthly" ? "week" : "day"} />
+                  <RechartsComponents.YAxis />
+                  <RechartsComponents.Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 border rounded-lg shadow-lg">
+                            <p className="font-medium">{label}</p>
+                            <p className="text-sm text-gray-600">{payload[0].value} sessions</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <RechartsComponents.Bar dataKey="pomodoros" fill="#06b6d4" radius={[4, 4, 0, 0]} />
+                </RechartsComponents.BarChart>
+              </RechartsComponents.ResponsiveContainer>
+            </ChartWrapper>
           </div>
 
           {/* Charts Row 2 */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
             {/* Project Time Distribution */}
-            <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader>
-                <CardTitle>Time by Project</CardTitle>
-                <CardDescription>Hours spent on different projects</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={projectData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="hours"
-                      >
-                        {projectData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload
-                            return (
-                              <div className="bg-white p-3 border rounded-lg shadow-lg">
-                                <p className="font-medium">{data.name}</p>
-                                <p className="text-sm text-gray-600">{data.hours}h</p>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-                <div className="mt-4 space-y-2">
-                  {projectData.map((project, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }}></div>
-                        <span>{project.name}</span>
-                      </div>
-                      <span className="font-medium">{project.hours}h</span>
+            <ChartWrapper
+              title="Time by Project"
+              description="Hours spent on different projects"
+              data={projectData}
+              noDataMessage="No project data available"
+            >
+              <RechartsComponents.ResponsiveContainer width="100%" height="100%">
+                <RechartsComponents.PieChart>
+                  <RechartsComponents.Pie
+                    data={projectData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="hours"
+                  >
+                    {projectData.map((entry, index) => (
+                      <RechartsComponents.Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </RechartsComponents.Pie>
+                  <RechartsComponents.Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-white p-3 border rounded-lg shadow-lg">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm text-gray-600">{data.hours}h</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                </RechartsComponents.PieChart>
+              </RechartsComponents.ResponsiveContainer>
+              <div className="mt-4 space-y-2">
+                {projectData.map((project, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }}></div>
+                      <span>{project.name}</span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    <span className="font-medium">{project.hours}h</span>
+                  </div>
+                ))}
+              </div>
+            </ChartWrapper>
 
             {/* Productivity Trends */}
-            <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-              <CardHeader>
-                <CardTitle>Productivity Trends</CardTitle>
-                <CardDescription>Efficiency, focus, and completion rates over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {pomodoroTrendsData.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">No productivity data yet, matey!</div>
-                ) : (
-                  <ChartContainer config={chartConfig} className="h-[250px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={pomodoroTrendsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey={timePeriod === "monthly" ? "week" : timePeriod === "weekly" ? "week" : "key"} />
-                        <YAxis domain={[0, 100]} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="efficiency" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }} />
-                        <Line type="monotone" dataKey="focus" stroke="#06b6d4" strokeWidth={2} dot={{ fill: "#06b6d4", strokeWidth: 2, r: 4 }} />
-                        <Line type="monotone" dataKey="completion" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                )}
-              </CardContent>
-            </Card>
+            <ChartWrapper
+              title="Productivity Trends"
+              description="Efficiency, focus, and completion rates over time"
+              data={pomodoroTrendsData}
+              noDataMessage="No productivity data available"
+            >
+              <RechartsComponents.ResponsiveContainer width="100%" height="100%">
+                <RechartsComponents.LineChart data={pomodoroTrendsData}>
+                  <RechartsComponents.CartesianGrid strokeDasharray="3 3" />
+                  <RechartsComponents.XAxis dataKey={timePeriod === "monthly" ? "week" : timePeriod === "weekly" ? "week" : "key"} />
+                  <RechartsComponents.YAxis domain={[0, 100]} />
+                  <RechartsComponents.Tooltip 
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 border rounded-lg shadow-lg">
+                            <p className="font-medium">{label}</p>
+                            {payload.map((item, index) => (
+                              <p key={index} className="text-sm text-gray-600" style={{ color: item.color }}>
+                                {item.name}: {item.value}
+                              </p>
+                            ))}
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <RechartsComponents.Line type="monotone" dataKey="efficiency" stroke="#8b5cf6" strokeWidth={2} dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }} />
+                  <RechartsComponents.Line type="monotone" dataKey="focus" stroke="#06b6d4" strokeWidth={2} dot={{ fill: "#06b6d4", strokeWidth: 2, r: 4 }} />
+                  <RechartsComponents.Line type="monotone" dataKey="completion" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981", strokeWidth: 2, r: 4 }} />
+                </RechartsComponents.LineChart>
+              </RechartsComponents.ResponsiveContainer>
+            </ChartWrapper>
           </div>
 
           {/* Task Completion Chart */}
-          <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle>Task Completion Analysis</CardTitle>
-              <CardDescription>Tasks completed vs hours worked correlation</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-hidden">
-              <div>
-                {taskCompletionData.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">No task completion data yet, matey!</div>
-                ) : (
-                  <div style={{ width: '100%', height: '300px', background: '#fff' }}>
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                          data={taskCompletionData} 
-                          barCategoryGap={taskCompletionData.length > 1 ? "20%" : "50%"}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="key" 
-                            label={{ value: "Period", position: "insideBottom", offset: -5 }} 
-                          />
-                          <YAxis 
-                            yAxisId="left" 
-                            label={{ value: "Projects Completed", angle: -90, position: "insideLeft" }} 
-                          />
-                          <YAxis 
-                            yAxisId="right" 
-                            orientation="right" 
-                            label={{ value: "Hours Worked", angle: 90, position: "insideRight" }} 
-                          />
-                          <ChartTooltip 
-                            cursor={{ fill: "hsl(var(--muted))" }}
-                            content={({ active, payload, label }) => {
-                              if (active && payload && payload.length) {
-                                const tasksPayload = payload.find(p => p.dataKey === 'tasks');
-                                const hoursPayload = payload.find(p => p.dataKey === 'hours');
-                                return (
-                                  <div className="bg-background p-2 border rounded-md shadow-lg text-sm">
-                                    <p className="font-bold mb-1">{`Period: ${label}`}</p>
-                                    {tasksPayload && <p style={{ color: tasksPayload.fill }}>{`Projects: ${tasksPayload.value}`}</p>}
-                                    {hoursPayload && <p style={{ color: hoursPayload.fill }}>{`Hours: ${(typeof hoursPayload.value === 'number' ? hoursPayload.value : 0).toFixed(1)}`}</p>}
-                                  </div>
-                                )
-                              }
-                              return null
-                            }} 
-                          />
-                          <Legend />
-                          <Bar yAxisId="left" dataKey="tasks" fill="#00BCD4" name="Projects Completed" radius={[4, 4, 0, 0]} barSize={60} />
-                          <Line yAxisId="right" type="monotone" dataKey="hours" stroke="#8884d8" name="Hours Worked" strokeWidth={2} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <ChartWrapper
+            title="Task Completion Analysis"
+            description="Tasks completed vs hours worked correlation"
+            data={taskCompletionData}
+            noDataMessage="No task completion data available"
+          >
+            <RechartsComponents.ResponsiveContainer width="100%" height="100%">
+              <RechartsComponents.BarChart 
+                data={taskCompletionData} 
+                barCategoryGap={taskCompletionData.length > 1 ? "20%" : "50%"}
+              >
+                <RechartsComponents.CartesianGrid strokeDasharray="3 3" />
+                <RechartsComponents.XAxis 
+                  dataKey="key" 
+                  label={{ value: "Period", position: "insideBottom", offset: -5 }} 
+                />
+                <RechartsComponents.YAxis 
+                  yAxisId="left" 
+                  label={{ value: "Projects Completed", angle: -90, position: "insideLeft" }} 
+                />
+                <RechartsComponents.YAxis 
+                  yAxisId="right" 
+                  orientation="right" 
+                  label={{ value: "Hours Worked", angle: 90, position: "insideRight" }} 
+                />
+                <RechartsComponents.Tooltip 
+                  cursor={{ fill: "hsl(var(--muted))" }}
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const tasksPayload = payload.find(p => p.dataKey === 'tasks');
+                      const hoursPayload = payload.find(p => p.dataKey === 'hours');
+                      return (
+                        <div className="bg-background p-2 border rounded-md shadow-lg text-sm">
+                          <p className="font-bold mb-1">{`Period: ${label}`}</p>
+                          {tasksPayload && <p style={{ color: tasksPayload.fill }}>{`Projects: ${tasksPayload.value}`}</p>}
+                          {hoursPayload && <p style={{ color: hoursPayload.fill }}>{`Hours: ${(typeof hoursPayload.value === 'number' ? hoursPayload.value : 0).toFixed(1)}`}</p>}
+                        </div>
+                      )
+                    }
+                    return null
+                  }} 
+                />
+                <RechartsComponents.Legend />
+                <RechartsComponents.Bar yAxisId="left" dataKey="tasks" fill="#00BCD4" name="Projects Completed" radius={[4, 4, 0, 0]} barSize={60} />
+                <RechartsComponents.Line yAxisId="right" type="monotone" dataKey="hours" stroke="#8884d8" name="Hours Worked" strokeWidth={2} />
+              </RechartsComponents.BarChart>
+            </RechartsComponents.ResponsiveContainer>
+          </ChartWrapper>
         </div>
       </div>
     </>

@@ -15,243 +15,183 @@ export function ReportsPage() {
   // 1. Load user projects and time entries from backend (persistent)
   const [projects, setProjects] = useState<any[]>([])
   const [timeEntries, setTimeEntries] = useState<any[]>([])
-  const [loadingData, setLoadingData] = useState(true)
-  const [error, setError] = useState<string|null>(null)
   const [pomodoroSessions, setPomodoroSessions] = useState<PomodoroSession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingCompletedProjects, setLoadingCompletedProjects] = useState(true)
+  const [completedProjects, setCompletedProjects] = useState(0)
 
   useEffect(() => {
     async function fetchData() {
-      setLoadingData(true)
       try {
-        // Fetch projects from backend
-        const projectsRes = await apiRequest(`${API_BASE}/projects/`)
-        const projectsData = await projectsRes.json()
-        setProjects(projectsData)
-        // Fetch time entries from backend
-        const timeRes = await apiRequest(`${API_BASE}/projects/time-entries/`)
-        const timeData = await timeRes.json()
-        setTimeEntries(timeData)
-        // Fetch pomodoro sessions from backend
-        const pomodorosData = await fetchPomodoroSessions()
-        setPomodoroSessions(pomodorosData)
-        // Optionally cache to localStorage for offline fallback
-        if (typeof window !== "undefined") {
-          localStorage.setItem("userProjects", JSON.stringify(projectsData))
-          localStorage.setItem("timeEntries", JSON.stringify(timeData))
-          localStorage.setItem("pomodoroSessions", JSON.stringify(pomodorosData))
+        setLoading(true)
+        const [projectsRes, timeEntriesRes, pomodoroRes] = await Promise.all([
+          apiRequest(`${API_BASE}/projects/`),
+          apiRequest(`${API_BASE}/time-entries/`),
+          fetchPomodoroSessions()
+        ])
+
+        if (projectsRes.ok) {
+          const projectsData = await projectsRes.json()
+          setProjects(projectsData)
         }
-      } catch (e: any) {
-        setError("Failed to fetch data from backend. Showing cached data.")
-        if (typeof window !== "undefined") {
-          const savedProjects = localStorage.getItem("userProjects")
-          setProjects(savedProjects ? JSON.parse(savedProjects) : [])
-          const savedEntries = localStorage.getItem("timeEntries")
-          setTimeEntries(savedEntries ? JSON.parse(savedEntries) : [])
-          const savedPomodoros = localStorage.getItem("pomodoroSessions")
-          setPomodoroSessions(savedPomodoros ? JSON.parse(savedPomodoros) : [])
+
+        if (timeEntriesRes.ok) {
+          const timeEntriesData = await timeEntriesRes.json()
+          setTimeEntries(timeEntriesData)
         }
+
+        if (pomodoroRes.ok) {
+          const pomodoroData = await pomodoroRes.json()
+          setPomodoroSessions(pomodoroData)
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error)
       } finally {
-        setLoadingData(false)
+        setLoading(false)
       }
     }
+
     fetchData()
   }, [])
 
-  // 2. Aggregate data for reports
-  // Helper: group entries by day/week/month
+  // 2. Group time entries by period
   function groupEntries(entries: any[], period: "daily" | "weekly" | "monthly") {
-    const groups: Record<string, any> = {}
-    entries.forEach(entry => {
-      const date = new Date(entry.date)
-      let key = ""
-      if (period === "daily") {
-        key = date.toISOString().split("T")[0]
-      } else if (period === "weekly") {
-        // Get week number of year
-        const firstDay = new Date(date.getFullYear(), 0, 1)
-        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
-        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
-        key = `${date.getFullYear()}-W${week}`
-      } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${date.getMonth() + 1}`
-      }
-      if (!groups[key]) groups[key] = { hours: 0, pomodoros: 0, tasks: 0, key }
-      groups[key].hours += entry.duration / 60
-      groups[key].pomodoros += entry.pomodoros || 0
-      groups[key].tasks += entry.tasks || 0
-    })
-    return Object.values(groups)
-  }
-
-  // Pomodoro aggregation for reports
-  function groupPomodoroEntries(entries: PomodoroSession[], period: "daily" | "weekly" | "monthly") {
-    const groups: Record<string, any> = {}
+    const grouped: { [key: string]: number } = {}
+    
     entries.forEach(entry => {
       const date = new Date(entry.start_time)
       let key = ""
+      
       if (period === "daily") {
-        key = date.toISOString().split("T")[0]
+        key = date.toLocaleDateString()
       } else if (period === "weekly") {
-        const firstDay = new Date(date.getFullYear(), 0, 1)
-        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
-        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
-        key = `${date.getFullYear()}-W${week}`
-      } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${date.getMonth() + 1}`
+        const weekStart = new Date(date)
+        weekStart.setDate(date.getDate() - date.getDay())
+        key = `Week of ${weekStart.toLocaleDateString()}`
+      } else {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       }
-      if (!groups[key]) groups[key] = { pomodoros: 0, key }
-      groups[key].pomodoros += 1
+      
+      const hours = (new Date(entry.end_time).getTime() - date.getTime()) / (1000 * 60 * 60)
+      grouped[key] = (grouped[key] || 0) + hours
     })
-    return Object.values(groups)
+    
+    return Object.entries(grouped).map(([key, hours]) => ({
+      [period === "monthly" ? "week" : "day"]: key,
+      hours: parseFloat(hours.toFixed(1))
+    }))
   }
 
-  // 3. Prepare data for charts
-  const currentData = groupEntries(timeEntries, timePeriod)
-  const pomodoroChartData = groupPomodoroEntries(pomodoroSessions, timePeriod)
+  // 3. Group pomodoro entries by period
+  function groupPomodoroEntries(entries: PomodoroSession[], period: "daily" | "weekly" | "monthly") {
+    const grouped: { [key: string]: number } = {}
+    
+    entries.forEach(entry => {
+      const date = new Date(entry.start_time)
+      let key = ""
+      
+      if (period === "daily") {
+        key = date.toLocaleDateString()
+      } else if (period === "weekly") {
+        const weekStart = new Date(date)
+        weekStart.setDate(date.getDate() - date.getDay())
+        key = `Week of ${weekStart.toLocaleDateString()}`
+      } else {
+        key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      }
+      
+      grouped[key] = (grouped[key] || 0) + 1
+    })
+    
+    return Object.entries(grouped).map(([key, pomodoros]) => ({
+      [period === "monthly" ? "week" : "day"]: key,
+      pomodoros
+    }))
+  }
 
-  // 4. Project time distribution
-  const projectHours: Record<string, number> = {}
+  // 4. Calculate project time distribution
+  const projectTimeMap = new Map<string, number>()
   timeEntries.forEach(entry => {
-    if (!projectHours[entry.project]) projectHours[entry.project] = 0
-    projectHours[entry.project] += entry.duration / 60
+    const project = projects.find(p => p.id === entry.project)
+    if (project) {
+      const hours = (new Date(entry.end_time).getTime() - new Date(entry.start_time).getTime()) / (1000 * 60 * 60)
+      projectTimeMap.set(project.name, (projectTimeMap.get(project.name) || 0) + hours)
+    }
   })
-  const projectData = Object.entries(projectHours).map(([name, hours], i) => ({
+
+  const colors = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#10b981']
+  const projectData = Array.from(projectTimeMap.entries()).map(([name, hours], index) => ({
     name,
-    hours,
-    color: ["#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"][i % 5],
+    hours: parseFloat(hours.toFixed(1)),
+    color: colors[index % colors.length]
   }))
 
-  // 5. Key metrics
-  const totalHours = timeEntries.reduce((sum, e) => sum + e.duration, 0) / 60
-  const totalPomodoros = pomodoroSessions.length
-  // Fetch completed tasks count from backend
-  // Show completed projects as 'Tasks Completed'
-  const [completedProjects, setCompletedProjects] = useState<number | null>(null)
-  const [loadingCompletedProjects, setLoadingCompletedProjects] = useState(true)
-
+  // 5. Load completed projects count
   useEffect(() => {
-    let mounted = true
     async function loadCompletedProjects() {
-      setLoadingCompletedProjects(true)
       try {
-        const count = await import("@/utils/projects-api").then(mod => mod.fetchCompletedProjectCount())
-        if (mounted) setCompletedProjects(count)
-      } catch (e) {
-        if (mounted) setCompletedProjects(0)
+        setLoadingCompletedProjects(true)
+        const completedCount = projects.filter(p => p.status?.toLowerCase() === "completed").length
+        setCompletedProjects(completedCount)
+      } catch (error) {
+        console.error("Error loading completed projects:", error)
       } finally {
-        if (mounted) setLoadingCompletedProjects(false)
+        setLoadingCompletedProjects(false)
       }
     }
-    loadCompletedProjects()
-    return () => { mounted = false }
-  }, [])
 
-  const totalTasks = timeEntries.reduce((sum, e) => sum + (e.tasks || 0), 0)
-  const avgFocus = totalHours && timeEntries.length ? Math.round((totalHours * 60) / timeEntries.length) : 0
+    if (projects.length > 0) {
+      loadCompletedProjects()
+    }
+  }, [projects])
 
-  const chartConfig = {
-    hours: {
-      label: "Hours",
-      color: "#8b5cf6",
-    },
-    pomodoros: {
-      label: "Pomodoros",
-      color: "#06b6d4",
-    },
-    tasks: {
-      label: "Tasks",
-      color: "#10b981",
-    },
-  }
-
-  // Productivity Trends from Pomodoro Sessions
+  // 6. Calculate productivity trends
   function getPomodoroTrends(entries: PomodoroSession[], period: "daily" | "weekly" | "monthly") {
-    const groups: Record<string, { efficiency: number; focus: number; completion: number; count: number; key: string }> = {}
-    entries.forEach(entry => {
-      const date = new Date(entry.start_time)
-      let key = ""
-      if (period === "daily") {
-        key = date.toISOString().split("T")[0]
-      } else if (period === "weekly") {
-        const firstDay = new Date(date.getFullYear(), 0, 1)
-        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
-        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
-        key = `${date.getFullYear()}-W${week}`
-      } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${date.getMonth() + 1}`
+    const grouped = groupPomodoroEntries(entries, period)
+    
+    return grouped.map((item, index) => {
+      const efficiency = Math.min(100, (item.pomodoros / 8) * 100) // Assuming 8 pomodoros = 100% efficiency
+      const focus = Math.min(100, (item.pomodoros / 4) * 100) // Assuming 4 pomodoros = 100% focus
+      const completion = Math.min(100, (item.pomodoros / 6) * 100) // Assuming 6 pomodoros = 100% completion
+      
+      return {
+        [period === "monthly" ? "week" : timePeriod === "weekly" ? "week" : "key"]: item[period === "monthly" ? "week" : "day"],
+        efficiency: Math.round(efficiency),
+        focus: Math.round(focus),
+        completion: Math.round(completion)
       }
-      if (!groups[key]) groups[key] = { efficiency: 0, focus: 0, completion: 0, count: 0, key }
-      groups[key].efficiency += 1 // Number of Pomodoros
-      groups[key].focus += entry.duration || 0 // Sum durations
-      groups[key].count += 1
-      groups[key].completion = 100 // Assume 100% for now
     })
-    // Calculate average focus
-    Object.values(groups).forEach(g => {
-      g.focus = g.count ? Math.round(g.focus / g.count) : 0
-    })
-    return Object.values(groups)
   }
-  const pomodoroTrendsData = getPomodoroTrends(pomodoroSessions, timePeriod)
 
-  // Task Completion Analysis: tasks = completed projects, hours = total hours worked per period
+  // 7. Calculate task completion data
   function getTaskCompletionData(
     timeEntries: any[],
     completedProjects: any[],
     period: "daily" | "weekly" | "monthly"
   ) {
-    const groups: Record<string, { tasks: number; hours: number; key: string }> = {}
-
-    // First, process time entries to get hours per period
-    timeEntries.forEach(entry => {
-      const date = new Date(entry.date)
-      let key = ""
-      if (period === "daily") {
-        key = date.toISOString().split("T")[0]
-      } else if (period === "weekly") {
-        const firstDay = new Date(date.getFullYear(), 0, 1)
-        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
-        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
-        key = `${date.getFullYear()}-W${week}`
-      } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
-      }
-
-      if (!groups[key]) {
-        groups[key] = { tasks: 0, hours: 0, key }
-      }
-      groups[key].hours += entry.duration / 60
-    })
-
-    // Next, process completed projects
-    completedProjects.forEach(project => {
-      // When a project is marked 'Completed', its 'updated_at' timestamp reflects the completion time.
-      const completionDateStr = project.updated_at
-      if (!completionDateStr) return
-
-      const date = new Date(completionDateStr)
-      let key = ""
-      if (period === "daily") {
-        key = date.toISOString().split("T")[0]
-      } else if (period === "weekly") {
-        const firstDay = new Date(date.getFullYear(), 0, 1)
-        const days = Math.floor((date.getTime() - firstDay.getTime()) / (24 * 60 * 60 * 1000))
-        const week = Math.ceil((days + firstDay.getDay() + 1) / 7)
-        key = `${date.getFullYear()}-W${week}`
-      } else if (period === "monthly") {
-        key = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
-      }
-
-      if (groups[key]) {
-        groups[key].tasks += 1
-      } else {
-        // This case handles completed projects in periods with no tracked time.
-        groups[key] = { tasks: 1, hours: 0, key }
-      }
-    })
-
-    return Object.values(groups).sort((a, b) => a.key.localeCompare(b.key))
+    const groupedEntries = groupEntries(timeEntries, period)
+    const completedCount = completedProjects.length
+    
+    return groupedEntries.map((entry, index) => ({
+      key: entry[period === "monthly" ? "week" : "day"],
+      tasks: Math.round(completedCount / Math.max(1, groupedEntries.length)),
+      hours: entry.hours
+    }))
   }
+
+  // 8. Calculate metrics
+  const currentData = groupEntries(timeEntries, timePeriod)
+  const pomodoroChartData = groupPomodoroEntries(pomodoroSessions, timePeriod)
+  const pomodoroTrendsData = getPomodoroTrends(pomodoroSessions, timePeriod)
+  
+  const totalHours = timeEntries.reduce((total, entry) => {
+    const hours = (new Date(entry.end_time).getTime() - new Date(entry.start_time).getTime()) / (1000 * 60 * 60)
+    return total + hours
+  }, 0)
+  
+  const totalPomodoros = pomodoroSessions.length
+  const avgFocus = totalPomodoros > 0 ? Math.round((totalHours / totalPomodoros) * 60) : 0
+
   const completedProjectsList = projects.filter(p => p.status?.toLowerCase() === "completed")
   const taskCompletionData = getTaskCompletionData(timeEntries, completedProjectsList, timePeriod)
 
@@ -259,8 +199,8 @@ export function ReportsPage() {
     <>
       {/* Centered Header and Controls */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-white/20 px-6 py-4 flex flex-col items-center text-center space-y-2">
-            <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
-            <p className="text-gray-600">Track your productivity and analyze your work patterns</p>
+        <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
+        <p className="text-gray-600">Track your productivity and analyze your work patterns</p>
         <div className="flex items-center justify-center space-x-4 mt-2">
           <span className="text-gray-700 font-medium">View by:</span>
           {['daily', 'weekly', 'monthly'].map((period) => (
@@ -295,7 +235,6 @@ export function ReportsPage() {
                 <div className="text-2xl font-bold text-purple-600">{totalHours.toFixed(1)}h</div>
                 <p className="text-xs text-green-600 flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  {/* You can add a comparison to previous period here if desired */}
                 </p>
               </CardContent>
             </Card>
@@ -315,17 +254,17 @@ export function ReportsPage() {
 
             <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle> {/* Actually completed projects */}
+                <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
                 <Target className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
-  {loadingCompletedProjects ? (
-    <span className="animate-pulse">...</span>
-  ) : (
-    completedProjects
-  )}
-</div>
+                  {loadingCompletedProjects ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    completedProjects
+                  )}
+                </div>
                 <p className="text-xs text-green-600 flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                 </p>
@@ -507,7 +446,6 @@ export function ReportsPage() {
           </div>
 
           {/* Task Completion Chart */}
-<<<<<<< HEAD
           <ChartWrapper
             title="Task Completion Analysis"
             description="Tasks completed vs hours worked correlation"
@@ -556,67 +494,6 @@ export function ReportsPage() {
               </RechartsComponents.BarChart>
             </RechartsComponents.ResponsiveContainer>
           </ChartWrapper>
-=======
-          <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
-            <CardHeader>
-              <CardTitle>Task Completion Analysis</CardTitle>
-              <CardDescription>Tasks completed vs hours worked correlation</CardDescription>
-            </CardHeader>
-            <CardContent className="overflow-hidden">
-              <div>
-                {taskCompletionData.length === 0 ? (
-                  <div className="text-center text-gray-500 py-12">No task completion data yet, matey!</div>
-                ) : (
-                  <div style={{ width: '100%', height: '300px', background: '#fff' }}>
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                          data={taskCompletionData} 
-                          barCategoryGap={taskCompletionData.length > 1 ? "20%" : "50%"}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="key" 
-                            label={{ value: "Period", position: "insideBottom", offset: -5 }} 
-                          />
-                          <YAxis 
-                            yAxisId="left" 
-                            label={{ value: "Projects Completed", angle: -90, position: "insideLeft" }} 
-                          />
-                          <YAxis 
-                            yAxisId="right" 
-                            orientation="right" 
-                            label={{ value: "Hours Worked", angle: 90, position: "insideRight" }} 
-                          />
-                          <ChartTooltip 
-                            cursor={{ fill: "hsl(var(--muted))" }}
-                            content={({ active, payload, label }) => {
-                              if (active && payload && payload.length) {
-                                const tasksPayload = payload.find(p => p.dataKey === 'tasks');
-                                const hoursPayload = payload.find(p => p.dataKey === 'hours');
-                                return (
-                                  <div className="bg-background p-2 border rounded-md shadow-lg text-sm">
-                                    <p className="font-bold mb-1">{`Period: ${label}`}</p>
-                                    {tasksPayload && <p style={{ color: tasksPayload.fill }}>{`Projects: ${tasksPayload.value}`}</p>}
-                                    {hoursPayload && <p style={{ color: hoursPayload.fill }}>{`Hours: ${(typeof hoursPayload.value === 'number' ? hoursPayload.value : 0).toFixed(1)}`}</p>}
-                                  </div>
-                                )
-                              }
-                              return null
-                            }} 
-                          />
-                          <Legend />
-                          <Bar yAxisId="left" dataKey="tasks" fill="#00BCD4" name="Projects Completed" radius={[4, 4, 0, 0]} barSize={60} />
-                          <Line yAxisId="right" type="monotone" dataKey="hours" stroke="#8884d8" name="Hours Worked" strokeWidth={2} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </ChartContainer>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
->>>>>>> d15dbf32a917956fcbc3ab8cd26d30667754bb60
         </div>
       </div>
     </>

@@ -507,6 +507,7 @@ export function ReportsPage() {
           </div>
 
           {/* Task Completion Chart */}
+<<<<<<< HEAD
           <ChartWrapper
             title="Task Completion Analysis"
             description="Tasks completed vs hours worked correlation"
@@ -555,6 +556,67 @@ export function ReportsPage() {
               </RechartsComponents.BarChart>
             </RechartsComponents.ResponsiveContainer>
           </ChartWrapper>
+=======
+          <Card className="bg-white/90 backdrop-blur-sm overflow-hidden">
+            <CardHeader>
+              <CardTitle>Task Completion Analysis</CardTitle>
+              <CardDescription>Tasks completed vs hours worked correlation</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-hidden">
+              <div>
+                {taskCompletionData.length === 0 ? (
+                  <div className="text-center text-gray-500 py-12">No task completion data yet, matey!</div>
+                ) : (
+                  <div style={{ width: '100%', height: '300px', background: '#fff' }}>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart 
+                          data={taskCompletionData} 
+                          barCategoryGap={taskCompletionData.length > 1 ? "20%" : "50%"}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="key" 
+                            label={{ value: "Period", position: "insideBottom", offset: -5 }} 
+                          />
+                          <YAxis 
+                            yAxisId="left" 
+                            label={{ value: "Projects Completed", angle: -90, position: "insideLeft" }} 
+                          />
+                          <YAxis 
+                            yAxisId="right" 
+                            orientation="right" 
+                            label={{ value: "Hours Worked", angle: 90, position: "insideRight" }} 
+                          />
+                          <ChartTooltip 
+                            cursor={{ fill: "hsl(var(--muted))" }}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const tasksPayload = payload.find(p => p.dataKey === 'tasks');
+                                const hoursPayload = payload.find(p => p.dataKey === 'hours');
+                                return (
+                                  <div className="bg-background p-2 border rounded-md shadow-lg text-sm">
+                                    <p className="font-bold mb-1">{`Period: ${label}`}</p>
+                                    {tasksPayload && <p style={{ color: tasksPayload.fill }}>{`Projects: ${tasksPayload.value}`}</p>}
+                                    {hoursPayload && <p style={{ color: hoursPayload.fill }}>{`Hours: ${(typeof hoursPayload.value === 'number' ? hoursPayload.value : 0).toFixed(1)}`}</p>}
+                                  </div>
+                                )
+                              }
+                              return null
+                            }} 
+                          />
+                          <Legend />
+                          <Bar yAxisId="left" dataKey="tasks" fill="#00BCD4" name="Projects Completed" radius={[4, 4, 0, 0]} barSize={60} />
+                          <Line yAxisId="right" type="monotone" dataKey="hours" stroke="#8884d8" name="Hours Worked" strokeWidth={2} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+>>>>>>> d15dbf32a917956fcbc3ab8cd26d30667754bb60
         </div>
       </div>
     </>
